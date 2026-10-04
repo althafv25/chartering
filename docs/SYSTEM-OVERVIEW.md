@@ -64,7 +64,7 @@ This is a **maritime chartering and vessel operations management platform**. It 
 ┌─────────────────────────────────────────────────────────────────┐
 │                       DATABASE LAYER                             │
 │  MySQL 5.7 @ 127.0.0.1:3306                                     │
-│  Database: "offshore" (production) or "offshore_test" (tests)   │
+│  Database: "offshore"                                          │
 │  Tables: 84 tables covering all modules                         │
 │  Relations: Companies, Vessels, Voyages, Contracts, Invoices... │
 └─────────────────────────────────────────────────────────────────┘
@@ -350,7 +350,6 @@ php artisan key:generate
 # Using MySQL CLI
 mysql -h 127.0.0.1 -u root -p <<EOF
 CREATE DATABASE offshore;
-CREATE DATABASE offshore_test;
 EOF
 
 # Or using phpMyAdmin (easier)

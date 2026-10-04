@@ -4,6 +4,7 @@ namespace App\Services\Finance;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\PayableStatus;
+use App\Enums\PaymentDirection;
 use App\Enums\PaymentStatus;
 use App\Enums\Permission;
 use App\Exceptions\BusinessRuleException;
@@ -111,6 +112,9 @@ class PaymentService
             $created = [];
             $totalThisCall = '0';
             foreach ($allocations as $row) {
+                if (empty($row['invoice_id']) === empty($row['payable_id'])) {
+                    throw new BusinessRuleException('Each allocation must identify exactly one invoice or payable.', 'validation_failed', ['allocations' => ['Choose exactly one target.']], 422);
+                }
                 $amount = Decimal::round((string) $row['amount'], 2);
                 if (Decimal::cmp($amount, '0') <= 0) {
                     throw new BusinessRuleException('Allocation amount must be positive.', 'validation_failed', ['amount' => ['Must be positive.']], 422);
@@ -161,6 +165,9 @@ class PaymentService
 
             $locked->unallocated_amount = Decimal::round(Decimal::add((string) $locked->unallocated_amount, (string) $alloc->allocated_amount), 2);
             $locked->setAttribute('updated_by', $actor->id)->save();
+            activity('payments')->performedOn($locked)->causedBy($actor)->event('unallocated')
+                ->withProperties($alloc->only(['invoice_id', 'payable_id', 'allocated_amount', 'invoice_ccy_amount', 'fx_difference_base']))
+                ->log('Payment allocation released');
             $alloc->delete();
 
             return $locked->refresh();
@@ -207,14 +214,16 @@ class PaymentService
     private function allocateToInvoice(Payment $payment, int $invoiceId, string $amount, User $actor): PaymentAllocation
     {
         $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoiceId);
+        if ($payment->direction !== PaymentDirection::RECEIVED || (int) $payment->company_id !== (int) $invoice->customer_company_id) {
+            throw new BusinessRuleException('An invoice requires a received payment from its customer.', 'allocation_target_mismatch');
+        }
         if (! in_array($invoice->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Overdue], true)) {
             throw new BusinessRuleException("Invoice {$invoice->status->value} cannot receive a payment allocation.", 'invalid_status_transition');
         }
-        if (Decimal::cmp($amount, (string) $invoice->balance) > 0) {
-            throw new BusinessRuleException("Allocation of {$amount} exceeds the invoice balance of {$invoice->balance}.", 'allocation_exceeds_balance');
-        }
-
         [$invoiceCcyAmount, $fxDifferenceBase] = $this->convertAllocation($amount, $payment, $invoice->currency, (string) $invoice->fx_rate);
+        if (Decimal::cmp($invoiceCcyAmount, (string) $invoice->balance) > 0) {
+            throw new BusinessRuleException("Allocation of {$invoiceCcyAmount} {$invoice->currency} exceeds the invoice balance of {$invoice->balance}.", 'allocation_exceeds_balance');
+        }
 
         // DB unique key allows at most one allocation row per (payment, invoice); merge into it.
         $allocation = PaymentAllocation::query()->where('payment_id', $payment->id)->where('invoice_id', $invoice->id)->lockForUpdate()->first();
@@ -243,14 +252,16 @@ class PaymentService
     private function allocateToPayable(Payment $payment, int $payableId, string $amount, User $actor): PaymentAllocation
     {
         $payable = Payable::query()->lockForUpdate()->findOrFail($payableId);
+        if ($payment->direction !== PaymentDirection::PAID || (int) $payment->company_id !== (int) $payable->supplier_company_id) {
+            throw new BusinessRuleException('A payable requires an outgoing payment to its supplier.', 'allocation_target_mismatch');
+        }
         if (! in_array($payable->status, [PayableStatus::Approved, PayableStatus::PartiallyPaid], true)) {
             throw new BusinessRuleException("Payable {$payable->status->value} cannot receive a payment allocation.", 'invalid_status_transition');
         }
-        if (Decimal::cmp($amount, (string) $payable->balance) > 0) {
-            throw new BusinessRuleException("Allocation of {$amount} exceeds the payable balance of {$payable->balance}.", 'allocation_exceeds_balance');
-        }
-
         [$payableCcyAmount, $fxDifferenceBase] = $this->convertAllocation($amount, $payment, $payable->currency, (string) $payable->fx_rate);
+        if (Decimal::cmp($payableCcyAmount, (string) $payable->balance) > 0) {
+            throw new BusinessRuleException("Allocation of {$payableCcyAmount} {$payable->currency} exceeds the payable balance of {$payable->balance}.", 'allocation_exceeds_balance');
+        }
 
         $allocation = PaymentAllocation::query()->where('payment_id', $payment->id)->where('payable_id', $payable->id)->lockForUpdate()->first();
         if ($allocation) {
@@ -280,14 +291,8 @@ class PaymentService
      */
     private function convertAllocation(string $amount, Payment $payment, string $targetCurrency, string $targetFxRate): array
     {
-        $base = (string) config('offshore.base_currency');
-
-        if ($targetCurrency === $payment->currency) {
-            // Same currency: no conversion, no FX difference.
-            return [Decimal::round($amount, 2), '0.00'];
-        }
-
-        $payToTargetRate = $this->fx->resolve($payment->currency, $targetCurrency, $payment->payment_date)['rate'];
+        $payToTargetRate = $targetCurrency === $payment->currency
+            ? '1' : $this->fx->resolve($payment->currency, $targetCurrency, $payment->payment_date)['rate'];
         $targetCcyAmount = Decimal::round(Decimal::mul($amount, $payToTargetRate), 2);
 
         $allocatedBaseAtPaymentRate = Decimal::round(Decimal::mul($amount, (string) $payment->fx_rate), 2);

@@ -11,7 +11,7 @@ docs/       requirements, architecture, ERD, API, business rules, progress
 
 ## Local setup (ServBay / macOS)
 
-Requires PHP 8.2+, Composer, Node 20+, MySQL (databases `offshore` and `offshore_test`).
+Requires PHP 8.2+, Composer, Node 20+, MySQL (database `offshore`).
 
 ```bash
 # Backend
@@ -35,9 +35,8 @@ Dev login: `admin@offshore.local` / `Admin@12345` (local only).
 ```bash
 cd backend  && php artisan test && ./vendor/bin/phpstan analyse && ./vendor/bin/pint --test
 cd frontend && npm run lint && npm run build && npm test
-cd frontend && npm run e2e      # real-browser tests (Chromium); builds and uses its own throw-away database `offshore_e2e`
 ```
 
-**Status:** Phases 2–12 complete and tested (292 backend tests, 34 frontend tests, 10 E2E tests). Phase 13 CII blocked on business approval. Phase 14 testing hardening in progress.
+**Status:** Phases 2–12 complete and tested (292 backend tests, 34 frontend tests). Phase 13 CII blocked on business approval. Phase 14 testing hardening in progress.
 
 Progress: `docs/13-DEVELOPMENT-PROGRESS.md`. Final status: `docs/14-FINAL-STATUS.md`. Decisions: `docs/14-DECISIONS.md`.

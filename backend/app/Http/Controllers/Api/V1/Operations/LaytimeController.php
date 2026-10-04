@@ -227,6 +227,6 @@ class LaytimeController extends Controller
 
     private function res(LaytimeCalculation $c): LaytimeCalculationResource
     {
-        return new LaytimeCalculationResource($c->load(self::WITH));
+        return new LaytimeCalculationResource($c->refresh()->load(self::WITH));
     }
 }

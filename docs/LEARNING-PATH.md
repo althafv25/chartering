@@ -165,7 +165,6 @@ php artisan key:generate
 # Database setup
 mysql -h 127.0.0.1 -u root -p -e "
 CREATE DATABASE IF NOT EXISTS offshore;
-CREATE DATABASE IF NOT EXISTS offshore_test;
 "
 
 cd backend

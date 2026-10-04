@@ -4,6 +4,33 @@ namespace Tests\Feature\Operations;
 
 class LaytimeTest extends OperationsTestCase
 {
+    public function test_changed_inputs_and_exceptions_require_recalculation_and_agreed_results_are_frozen(): void
+    {
+        $id = $this->sailingVoyage();
+        $call = $this->portCall($id);
+        $calc = $this->postJson('/api/v1/laytime-calculations', [
+            'voyage_id' => $id, 'port_call_id' => $call['id'], 'calculation_type' => 'load', 'fixed_hours' => '8',
+            'laytime_commenced_at' => '2026-10-15T00:00', 'laytime_completed_at' => '2026-10-15T10:00', 'demurrage_rate_per_day' => '2400',
+        ])->assertCreated()->json('data');
+        $url = "/api/v1/laytime-calculations/{$calc['id']}";
+        $calculated = $this->postJson("{$url}/calculate")->assertOk()->assertJsonPath('data.demurrage_amount', '200.00')->json('data');
+        $this->putJson($url, ['lock_version' => $calculated['lock_version'], 'fixed_hours' => '20'])->assertOk()->assertJsonPath('data.calculated_at', null);
+        $this->postJson("{$url}/submit")->assertStatus(409)->assertJsonPath('error_code', 'calculation_incomplete');
+        $this->postJson("{$url}/calculate")->assertOk()->assertJsonPath('data.allowed_hours', '20.0000');
+        $exception = $this->postJson("{$url}/exceptions", ['from_at' => '2026-10-15T01:00', 'to_at' => '2026-10-15T02:00', 'exception_type' => 'weather', 'pct_counted' => '0'])
+            ->assertCreated()->assertJsonPath('data.calculated_at', null)->json('data.exceptions.0.id');
+        $this->postJson("{$url}/submit")->assertStatus(409);
+        $this->postJson("{$url}/calculate")->assertOk()->assertJsonPath('data.used_hours', '9.0000');
+        $this->putJson("{$url}/exceptions/{$exception}", ['pct_counted' => '50'])->assertOk()->assertJsonPath('data.calculated_at', null);
+        $this->postJson("{$url}/calculate")->assertOk()->assertJsonPath('data.used_hours', '9.5000');
+        $this->deleteJson("{$url}/exceptions/{$exception}")->assertOk()->assertJsonPath('data.calculated_at', null);
+        $this->postJson("{$url}/submit")->assertStatus(409);
+        $this->postJson("{$url}/calculate")->assertOk()->assertJsonPath('data.used_hours', '10.0000');
+        $this->postJson("{$url}/submit")->assertOk();
+        $this->as($this->commercial)->postJson("{$url}/agree")->assertOk();
+        $this->as($this->ops)->postJson("{$url}/calculate")->assertStatus(409)->assertJsonPath('error_code', 'laytime_read_only');
+    }
+
     public function test_laytime_calculation_sof_events_exceptions_and_lifecycle(): void
     {
         $id = $this->sailingVoyage();

@@ -16,7 +16,7 @@ class LaytimeCalculator
     /** @param array{fixed_hours?: float|string|null, cargo_quantity?: float|string|null, rate_per_day?: float|string|null, rate_unit?: string|null, laytime_commenced_at?: CarbonInterface|null, laytime_completed_at?: CarbonInterface|null, demurrage_rate_per_day?: float|string|null, despatch_rate_per_day?: float|string|null, once_on_demurrage_rule?: string, exceptions?: array<int, array{from_at: CarbonInterface, to_at: CarbonInterface, exception_type: string, pct_counted: float|string}>} $inputs */
     public static function calculate(array $inputs): LaytimeResult
     {
-        $version = '1.0.1';
+        $version = '1.0.2';
         $trace = ['version' => $version];
         $issues = [];
 
@@ -62,7 +62,7 @@ class LaytimeCalculator
 
         // L4: Once on demurrage
         $rule = $inputs['once_on_demurrage_rule'] ?? 'always_on_demurrage';
-        if ($rule === 'always_on_demurrage' && $allowed !== null && Decimal::cmp($used, $allowed) > 0) {
+        if ($rule === 'always_on_demurrage' && $allowed !== null && Decimal::cmp($used, $allowed) >= 0) {
             // Re-count exceptions as full time after the point where cumulative time reaches allowed
             $recounted = self::applyOnceOnDemurrage($commenced, $completed, $exceptions, $allowed);
             if (Decimal::cmp($recounted['used'], $used) !== 0) {
@@ -189,14 +189,14 @@ class LaytimeCalculator
     {
         // Timeline events
         $events = [['time' => $start, 'type' => 'start'], ['time' => $end, 'type' => 'end']];
-        foreach ($exceptions as $ex) {
+        foreach ($exceptions as $id => $ex) {
             if ($ex['from_at']->greaterThanOrEqualTo($end) || $ex['to_at']->lessThanOrEqualTo($start)) {
                 continue; // outside window
             }
             $from = $ex['from_at']->greaterThan($start) ? $ex['from_at'] : $start;
             $to = $ex['to_at']->lessThan($end) ? $ex['to_at'] : $end;
-            $events[] = ['time' => $from, 'type' => 'ex_start', 'pct' => (string) $ex['pct_counted'], 'ex_type' => $ex['exception_type']];
-            $events[] = ['time' => $to, 'type' => 'ex_end', 'pct' => (string) $ex['pct_counted'], 'ex_type' => $ex['exception_type']];
+            $events[] = ['time' => $from, 'type' => 'ex_start', 'id' => $id, 'pct' => (string) $ex['pct_counted'], 'ex_type' => $ex['exception_type']];
+            $events[] = ['time' => $to, 'type' => 'ex_end', 'id' => $id];
         }
         usort($events, fn ($a, $b) => $a['time']->timestamp <=> $b['time']->timestamp);
 
@@ -210,9 +210,9 @@ class LaytimeCalculator
                 $segments[] = ['from' => $prev, 'to' => $e['time'], 'pct' => $pct, 'types' => $types];
             }
             if ($e['type'] === 'ex_start') {
-                $active[] = ['pct' => $e['pct'], 'ex_type' => $e['ex_type']];
+                $active[$e['id']] = ['pct' => $e['pct'], 'ex_type' => $e['ex_type']];
             } elseif ($e['type'] === 'ex_end') {
-                $active = array_values(array_filter($active, fn ($a) => $a['pct'] !== $e['pct'] || $a['ex_type'] !== $e['ex_type']));
+                unset($active[$e['id']]);
             }
             $prev = $e['time'];
         }

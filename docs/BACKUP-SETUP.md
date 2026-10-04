@@ -1,136 +1,69 @@
-# Offshore System: Backup Setup Guide
+# Database and private-document backups
 
-## Automated Database Backups
+Run `bash scripts/backup-database.sh` with the application's database connection and document-root settings exported. The script does not source Laravel's `.env` automatically.
 
-The system includes an automated backup script to ensure database recovery capability.
+Each successful run publishes one private directory containing **both** `database.sql.gz` and `documents.tar.gz`. It verifies both archives before publishing; a failed dump or document archive produces no completed recovery set and does not remove previous backups.
 
-### Location
-- Script: `/Applications/ServBay/www/offshore/scripts/backup-database.sh`
-- Backups: `/Applications/ServBay/www/offshore/backups/`
-- Log: `/Applications/ServBay/www/offshore/backups/backup.log`
+## Configuration
 
-### Setup
+| Environment variable | Default |
+|---|---|
+| `PROJECT_ROOT` | Repository containing the script |
+| `BACKUP_DIR` | `$PROJECT_ROOT/backups` |
+| `DOCUMENTS_ROOT` | `$PROJECT_ROOT/uploads`, matching the default Laravel documents disk |
+| `DB_HOST`, `DB_PORT` | `127.0.0.1`, `3306` |
+| `DB_USER` / `DB_USERNAME` | `root` |
+| `DB_NAME` / `DB_DATABASE` | `offshore` |
+| `DB_PASSWORD` | Client default if unset; passed through the process environment when set |
+| `MYSQL_DEFAULTS_FILE` | Optional private MySQL client option file for credentials |
+| `RETENTION_DAYS` | `30` |
 
-#### 1. Create Backup Directory
+Use absolute paths for cron. For a remote/object-storage documents disk, use its provider's versioned backup and recovery procedure; this script archives a local document directory. Keep `APP_KEY` and deployment secrets in your secret manager so restored encrypted application data remains readable.
+
+Example protected configuration file `/etc/offshore/backup.env`:
+
 ```bash
-mkdir -p /Applications/ServBay/www/offshore/backups
-chmod 755 /Applications/ServBay/www/offshore/backups
-```
-
-#### 2. Install Cron Job
-
-Edit your crontab:
-```bash
-crontab -e
-```
-
-Add this line to run backups daily at 2:00 AM:
-```cron
-0 2 * * * /Applications/ServBay/www/offshore/scripts/backup-database.sh
-```
-
-For every 6 hours:
-```cron
-0 */6 * * * /Applications/ServBay/www/offshore/scripts/backup-database.sh
-```
-
-#### 3. Set Database Password (Optional)
-
-If password is required, set it as an environment variable in crontab:
-```cron
-DB_PASSWORD=your_mysql_password
-0 2 * * * /Applications/ServBay/www/offshore/scripts/backup-database.sh
-```
-
-Or store it in `.env.backup`:
-```bash
-DB_PASSWORD=your_mysql_password
+PROJECT_ROOT=/srv/offshore
+BACKUP_DIR=/srv/backups/offshore
+DOCUMENTS_ROOT=/srv/offshore/uploads
+DB_DATABASE=offshore
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_USERNAME=offshore_backup
+MYSQL_DEFAULTS_FILE=/etc/offshore/mysql-backup.cnf
 ```
 
-Then source it in cron:
+Give configuration and credentials files mode `600`. Install a cron entry that exports the settings:
+
 ```cron
-0 2 * * * source ~/.env.backup && /Applications/ServBay/www/offshore/scripts/backup-database.sh
+0 2 * * * /bin/bash -c 'set -a; . /etc/offshore/backup.env; set +a; exec bash /srv/offshore/scripts/backup-database.sh'
 ```
 
-### Configuration
+Monitor exit status and `$BACKUP_DIR/backup.log`. Copy completed directories to monitored off-site storage. Local retention applies only to completed directories for the selected database.
 
-Edit the script to modify:
-- `BACKUP_DIR`: Location where backups are stored
-- `DB_HOST`, `DB_PORT`, `DB_USER`: MySQL connection details
-- `DB_NAME`: Database name to backup (default: "offshore")
-- `RETENTION_DAYS`: How many days to keep backups (default: 30)
+## Restore rehearsal
 
-### Backup Naming Convention
-
-Backups are named: `offshore_YYYYMMDD_HHMMSS.sql.gz`
-
-Example: `offshore_20261004_020000.sql.gz` (Oct 4, 2026 at 2:00 AM)
-
-### Monitoring
-
-View recent backups:
-```bash
-ls -lh /Applications/ServBay/www/offshore/backups/*.sql.gz | tail -10
-```
-
-View backup log:
-```bash
-tail -100 /Applications/ServBay/www/offshore/backups/backup.log
-```
-
-### Restore a Backup
+Choose one completed set. The target database must be new and the document destination empty. These commands create **`offshore_restored`**, not the live database:
 
 ```bash
-# List available backups
-ls -lh /Applications/ServBay/www/offshore/backups/
-
-# Restore from a backup (creates offshore_restored)
-gunzip -c /Applications/ServBay/www/offshore/backups/offshore_20261004_020000.sql.gz | \
-  mysql -h 127.0.0.1 -u root -p offshore
-
-# Or restore to a test database first
-gunzip -c /Applications/ServBay/www/offshore/backups/offshore_20261004_020000.sql.gz | \
-  mysql -h 127.0.0.1 -u root -p offshore_test
+BACKUP_SET=/srv/backups/offshore/offshore_YYYYMMDD_HHMMSS_PID
+RESTORE_DOCUMENTS=/srv/restore/offshore-documents
+gzip -t "$BACKUP_SET/database.sql.gz"
+tar -tzf "$BACKUP_SET/documents.tar.gz"
+mysql -h 127.0.0.1 -u root -p -e 'CREATE DATABASE offshore_restored CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+gunzip -c "$BACKUP_SET/database.sql.gz" | mysql -h 127.0.0.1 -u root -p offshore_restored
+mkdir -p "$RESTORE_DOCUMENTS"
+tar -xzf "$BACKUP_SET/documents.tar.gz" -C "$RESTORE_DOCUMENTS"
 ```
 
-### Verification
+Point an isolated application instance at `DB_DATABASE=offshore_restored` and `DOCUMENTS_ROOT=$RESTORE_DOCUMENTS`, using the matching application key. Check representative records, authenticated document downloads, and stored document hashes. Record the rehearsal outcome and recovery duration.
 
-The backup script automatically verifies backup integrity after creation using `gzip -t`.
+For a consistent database/document cutoff, pause document-writing requests and workers while capturing the pair. MySQL's `--single-transaction` provides a consistent InnoDB database snapshot; it is not a cross-filesystem transaction.
 
-For manual verification:
+The script's regression checks use temporary fixtures, including a deliberately failed dump:
+
 ```bash
-gzip -t /Applications/ServBay/www/offshore/backups/offshore_YYYYMMDD_HHMMSS.sql.gz
-echo $?  # 0 = OK, non-zero = corrupted
+bash -n scripts/backup-database.sh
+python3 scripts/test-backup.py
 ```
 
-### S3 Upload (Optional)
-
-For off-site backups, add to cron after backup completes:
-```bash
-aws s3 cp /Applications/ServBay/www/offshore/backups/offshore_*.sql.gz \
-  s3://your-bucket/backups/offshore/ --exclude "*" --include "offshore_*.sql.gz"
-```
-
-### Maintenance
-
-- **Weekly**: Verify at least one backup can be restored
-- **Monthly**: Test restore to staging environment
-- **Quarterly**: Verify S3 backups (if configured)
-- **Annually**: Review retention policy against compliance requirements
-
-### Troubleshooting
-
-#### Backup fails: "Access denied for user"
-- Verify DB_USER has correct permissions: `SHOW GRANTS FOR 'root'@'127.0.0.1';`
-- Ensure password is correctly set
-
-#### "No space left on device"
-- Check disk space: `df -h /Applications/ServBay/www/offshore/`
-- Reduce RETENTION_DAYS or increase disk size
-
-#### Cron job not running
-- Verify cron syntax: `crontab -l`
-- Check cron logs: `log stream --predicate 'process == "cron"' --level debug`
-- Ensure script is executable: `ls -l /Applications/ServBay/www/offshore/scripts/backup-database.sh`
+Archive checks and these regression tests do not substitute for a production restore rehearsal.

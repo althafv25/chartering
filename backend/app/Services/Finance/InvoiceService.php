@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\InvoiceType;
 use App\Enums\Permission;
 use App\Enums\VoyageRevenueStatus;
 use App\Exceptions\BusinessRuleException;
@@ -12,8 +13,10 @@ use App\Models\Document;
 use App\Models\DocumentType;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
+use App\Models\Payment;
 use App\Models\TaxCode;
 use App\Models\User;
+use App\Models\Voyage;
 use App\Models\VoyageRevenue;
 use App\Services\Chartering\ApprovalGuard;
 use App\Services\ExchangeRateService;
@@ -134,14 +137,7 @@ class InvoiceService
                 throw new BusinessRuleException("A {$locked->status->value} invoice cannot be edited.", 'invoice_read_only');
             }
 
-            // Release any revenue lines no longer referenced.
-            $keepRevenueIds = array_values(array_filter(array_map(fn ($l) => isset($l['voyage_revenue_id']) ? (int) $l['voyage_revenue_id'] : null, $lines)));
-            VoyageRevenue::query()->where(function ($q) use ($locked) {
-                $q->whereHas('invoiceLine', fn ($qq) => $qq->where('invoice_id', $locked->id));
-            })->whereNotIn('id', $keepRevenueIds)->lockForUpdate()->get()->each(function (VoyageRevenue $r) {
-                $r->fill(['status' => VoyageRevenueStatus::Confirmed])->save();
-            });
-
+            $this->releaseRevenueLines($locked);
             $locked->lines()->delete();
             $seq = 0;
             foreach ($lines as $row) {
@@ -157,6 +153,8 @@ class InvoiceService
     /** Convenience: bill a set of confirmed voyage revenues directly onto the invoice. */
     public function attachRevenueLines(Invoice $invoice, array $revenueIds, User $actor): Invoice
     {
+        $this->authorize($actor, Permission::InvoicesUpdate);
+
         return DB::transaction(function () use ($invoice, $revenueIds, $actor) {
             $locked = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
             if (! $locked->isEditable()) {
@@ -225,6 +223,12 @@ class InvoiceService
 
         return DB::transaction(function () use ($invoice, $actor) {
             $locked = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            if ($locked->voyage_id) {
+                $voyage = Voyage::query()->lockForUpdate()->findOrFail($locked->voyage_id);
+                if (! $voyage->isOperationallyOpen()) {
+                    throw new BusinessRuleException('Reopen the voyage before issuing its invoice.', 'voyage_read_only');
+                }
+            }
             $approvalRequired = (bool) config('offshore.approvals.invoices_require_approval', false);
             $allowedFrom = $approvalRequired ? [InvoiceStatus::Approved] : [InvoiceStatus::Draft, InvoiceStatus::Approved];
             if (! in_array($locked->status, $allowedFrom, true)) {
@@ -252,9 +256,7 @@ class InvoiceService
             if (! in_array($locked->status, [InvoiceStatus::Draft, InvoiceStatus::Approved], true)) {
                 throw new BusinessRuleException("A {$locked->status->value} invoice cannot be cancelled directly. Issue a credit note instead.", 'invoice_requires_credit_note');
             }
-            $locked->lines()->with('voyageRevenue')->get()->each(function (InvoiceLine $line) {
-                $line->voyageRevenue?->fill(['status' => VoyageRevenueStatus::Confirmed])->save();
-            });
+            $this->releaseRevenueLines($locked);
             $locked->fill(['status' => InvoiceStatus::Cancelled, 'cancelled_reason' => $reason, 'updated_by' => $actor->id])->save();
 
             return $locked;
@@ -268,9 +270,16 @@ class InvoiceService
 
         return DB::transaction(function () use ($invoice, $actor, $reason) {
             $original = Invoice::query()->lockForUpdate()->with('lines.taxCode')->findOrFail($invoice->id);
-            if (! in_array($original->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid, InvoiceStatus::Overdue], true)) {
+            if ($original->invoice_type === InvoiceType::CREDIT_NOTE || ! in_array($original->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid, InvoiceStatus::Overdue], true)) {
                 throw new BusinessRuleException('Only an issued invoice can be credited.', 'invalid_status_transition');
             }
+
+            // A full credit releases receipts for reallocation or reversal; never strand
+            // allocations on a cancelled invoice. PaymentService records the release audit.
+            foreach ($original->allocations()->orderBy('payment_id')->get() as $allocation) {
+                app(PaymentService::class)->unallocate(Payment::query()->findOrFail($allocation->payment_id), $allocation, $actor);
+            }
+            $original->refresh();
 
             $credit = new Invoice([
                 'invoice_type' => 'credit_note',
@@ -290,23 +299,29 @@ class InvoiceService
                 'created_by' => $actor->id,
                 'updated_by' => $actor->id,
             ]);
-            $this->snapshotFx($credit);
+            $credit->fx_rate = $original->fx_rate;
             $credit->save();
 
             $seq = 0;
             foreach ($original->lines as $line) {
-                $this->addLine($credit, [
+                $credit->lines()->create([
+                    'sequence' => ++$seq,
                     'description' => "Credit: {$line->description}",
                     'quantity' => $line->quantity,
+                    'unit' => $line->unit,
                     'rate' => $line->rate,
                     'amount' => Decimal::round(Decimal::mul((string) $line->amount, '-1'), 2),
                     'tax_code_id' => $line->tax_code_id,
-                ], ++$seq, $actor);
+                    'tax_rate_pct' => $line->tax_rate_pct,
+                    'tax_amount' => Decimal::round(Decimal::mul((string) $line->tax_amount, '-1'), 2),
+                    'line_total' => Decimal::round(Decimal::mul((string) $line->line_total, '-1'), 2),
+                ]);
             }
             $this->recalculateTotals($credit);
             $credit->invoice_number = $this->sequences->next('invoice', 'INV-'.now()->format('Y').'-');
             $credit->fill(['status' => InvoiceStatus::Issued, 'issued_by' => $actor->id, 'issued_at' => now()])->save();
 
+            $this->releaseRevenueLines($original);
             $original->fill(['status' => InvoiceStatus::Cancelled, 'cancelled_reason' => "Credited by {$credit->invoice_number}: {$reason}", 'updated_by' => $actor->id])->save();
 
             return $credit->refresh();
@@ -322,9 +337,7 @@ class InvoiceService
             if (! $locked->isEditable()) {
                 throw new BusinessRuleException("A {$locked->status->value} invoice cannot be deleted.", 'invoice_read_only');
             }
-            $locked->lines()->with('voyageRevenue')->get()->each(function (InvoiceLine $line) {
-                $line->voyageRevenue?->fill(['status' => VoyageRevenueStatus::Confirmed])->save();
-            });
+            $this->releaseRevenueLines($locked);
             $locked->delete();
         });
     }
@@ -393,6 +406,16 @@ class InvoiceService
     /** @param array<string, mixed> $row */
     private function addLine(Invoice $invoice, array $row, int $sequence, User $actor): InvoiceLine
     {
+        if (! empty($row['voyage_revenue_id'])) {
+            $revenue = VoyageRevenue::query()->lockForUpdate()->findOrFail($row['voyage_revenue_id']);
+            if ($revenue->status !== VoyageRevenueStatus::Confirmed || $revenue->invoiceLine()->exists()) {
+                throw new BusinessRuleException('Only confirmed, unbilled revenue can be attached to an invoice.', 'revenue_invoiced');
+            }
+            if ($revenue->currency !== $invoice->currency) {
+                throw new BusinessRuleException('Revenue and invoice currencies must match.', 'currency_mismatch');
+            }
+            $revenue->fill(['status' => VoyageRevenueStatus::Invoiced])->save();
+        }
         $decimals = Currency::query()->where('code', $invoice->currency)->value('decimals') ?? 2;
         $qty = isset($row['quantity']) ? Decimal::round((string) $row['quantity'], 4) : null;
         $rate = isset($row['rate']) ? Decimal::round((string) $row['rate'], 4) : '0';
@@ -418,6 +441,15 @@ class InvoiceService
             'tax_amount' => $taxAmount,
             'line_total' => $lineTotal,
         ]);
+    }
+
+    private function releaseRevenueLines(Invoice $invoice): void
+    {
+        foreach ($invoice->lines()->whereNull('released_at')->whereNotNull('voyage_revenue_id')->get() as $line) {
+            $revenue = VoyageRevenue::query()->lockForUpdate()->findOrFail($line->voyage_revenue_id);
+            $line->fill(['released_at' => now()])->save();
+            $revenue->fill(['status' => VoyageRevenueStatus::Confirmed])->save();
+        }
     }
 
     /** F3: subtotal = Σ amount; tax = Σ tax; total = subtotal + tax. base_total via F1. */

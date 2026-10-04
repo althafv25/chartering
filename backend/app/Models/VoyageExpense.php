@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\VoyageExpenseStatus;
+use App\Models\Concerns\GuardsVoyageFinancials;
 use App\Models\Concerns\HasAuditLog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VoyageExpense extends Model
 {
-    use HasAuditLog, HasFactory, SoftDeletes;
+    use GuardsVoyageFinancials, HasAuditLog, HasFactory, SoftDeletes;
 
     protected $attributes = ['status' => 'draft'];
 

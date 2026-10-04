@@ -14,6 +14,7 @@ class InvoiceLine extends Model
         'invoice_id',
         'sequence',
         'voyage_revenue_id',
+        'released_at',
         'description',
         'quantity',
         'unit',
@@ -26,6 +27,7 @@ class InvoiceLine extends Model
     ];
 
     protected $casts = [
+        'released_at' => 'datetime',
         'sequence' => 'integer',
         'quantity' => 'string',
         'rate' => 'string',

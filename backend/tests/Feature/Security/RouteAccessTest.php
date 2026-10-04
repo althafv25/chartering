@@ -26,7 +26,7 @@ class RouteAccessTest extends TestCase
 
     /** Self-service routes any signed-in user may call (their own account / notifications). "METHOD uri" => allowed to return 2xx. */
     private const SELF_SERVICE = [
-        'GET api/v1/auth/me', 'POST api/v1/auth/logout', 'PUT api/v1/profile',
+        'GET api/v1/up', 'GET api/v1/auth/me', 'POST api/v1/auth/logout', 'PUT api/v1/profile', 'PUT api/v1/auth/me',
         'GET api/v1/notifications', 'GET api/v1/notifications/unread-count', 'POST api/v1/notifications/read-all',
         'GET api/v1/document-types',
         // Deliberate lookups for dropdowns: active currencies / reference items only (the full lists need currencies.view / masters.view) and a static list of status names.

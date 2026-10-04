@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\VoyageRevenueStatus;
+use App\Models\Concerns\GuardsVoyageFinancials;
 use App\Models\Concerns\HasAuditLog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VoyageRevenue extends Model
 {
-    use HasAuditLog, HasFactory, SoftDeletes;
+    use GuardsVoyageFinancials, HasAuditLog, HasFactory, SoftDeletes;
 
     protected $attributes = ['status' => 'draft'];
 
@@ -87,7 +88,7 @@ class VoyageRevenue extends Model
 
     public function invoiceLine(): HasOne
     {
-        return $this->hasOne(InvoiceLine::class);
+        return $this->hasOne(InvoiceLine::class)->whereNull('released_at');
     }
 
     public function createdBy(): BelongsTo

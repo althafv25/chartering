@@ -27,10 +27,9 @@ cd ..
 ## Step 2: Database (5 minutes)
 
 ```bash
-# Create databases (use any MySQL client or this command)
+# Create database (use any MySQL client or this command)
 mysql -h 127.0.0.1 -u root -p -e "
 CREATE DATABASE IF NOT EXISTS offshore;
-CREATE DATABASE IF NOT EXISTS offshore_test;
 "
 
 # Run migrations & seed test data

@@ -77,4 +77,28 @@ class LaytimeCalculatorTest extends TestCase
         $this->assertNull($r->demurrageAmount);
         $this->assertNotEmpty($r->issues);
     }
+
+    public function test_exceptions_at_the_exact_demurrage_boundary_count_in_full(): void
+    {
+        $r = $this->calc([
+            'fixed_hours' => '8', 'laytime_commenced_at' => $this->at('2026-10-01 00:00'),
+            'laytime_completed_at' => $this->at('2026-10-01 10:00'), 'demurrage_rate_per_day' => '2400',
+            'exceptions' => [['from_at' => $this->at('2026-10-01 08:00'), 'to_at' => $this->at('2026-10-01 10:00'), 'exception_type' => 'weather', 'pct_counted' => '0']],
+        ]);
+        $this->assertSame('10.0000', $r->usedHours);
+        $this->assertSame('200.00', $r->demurrageAmount);
+    }
+
+    public function test_overlapping_identical_exceptions_remain_active_until_each_ends(): void
+    {
+        $r = $this->calc([
+            'fixed_hours' => '20', 'laytime_commenced_at' => $this->at('2026-10-01 00:00'),
+            'laytime_completed_at' => $this->at('2026-10-01 10:00'),
+            'exceptions' => [
+                ['from_at' => $this->at('2026-10-01 00:00'), 'to_at' => $this->at('2026-10-01 04:00'), 'exception_type' => 'weather', 'pct_counted' => '0'],
+                ['from_at' => $this->at('2026-10-01 02:00'), 'to_at' => $this->at('2026-10-01 06:00'), 'exception_type' => 'weather', 'pct_counted' => '0'],
+            ],
+        ]);
+        $this->assertSame('4.0000', $r->usedHours);
+    }
 }

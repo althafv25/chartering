@@ -157,4 +157,41 @@ class InvoiceServiceTest extends TestCase
         $this->assertGreaterThan(0, $document->size_bytes);
         $this->assertSame($document->id, Invoice::query()->findOrFail($issued->id)->pdf_document_id);
     }
+
+    public function test_cancel_delete_and_credit_release_billing_without_losing_history(): void
+    {
+        $revenue = $this->revenues->create(['revenue_category_id' => RevenueCategory::query()->value('id'), 'description' => 'Freight', 'amount' => '100', 'currency' => 'USD'], $this->financeUser);
+        $revenue = $this->revenues->confirm($revenue, $this->financeUser);
+        foreach (['cancel', 'delete', 'credit'] as $action) {
+            $invoice = $this->service->attachRevenueLines($this->draftInvoice(), [$revenue->id], $this->financeUser);
+            $line = $invoice->lines()->firstOrFail();
+            if ($action === 'cancel') {
+                $this->service->cancel($invoice, $this->financeUser, 'Rebill');
+            } elseif ($action === 'delete') {
+                $this->service->delete($invoice, $this->financeUser);
+            } else {
+                $this->service->creditNote($this->service->issue($invoice, $this->financeUser), $this->financeUser, 'Rebill');
+            }
+            $this->assertSame($revenue->id, $line->refresh()->voyage_revenue_id);
+            $this->assertNotNull($line->released_at);
+            $this->assertSame(VoyageRevenueStatus::Confirmed, $revenue->refresh()->status);
+            $this->assertFalse($revenue->invoiceLine()->exists());
+        }
+        $replacement = $this->service->attachRevenueLines($this->draftInvoice(), [$revenue->id], $this->financeUser);
+        $this->assertSame($replacement->id, $revenue->refresh()->invoiceLine->invoice_id);
+        $this->expectException(BusinessRuleException::class);
+        $this->service->saveLines($this->draftInvoice(), [['voyage_revenue_id' => $revenue->id, 'description' => 'Duplicate', 'amount' => '100']], $this->financeUser);
+    }
+
+    public function test_credit_note_reverses_the_original_tax_snapshot_after_master_changes(): void
+    {
+        $tax = TaxCode::query()->create(['code' => 'VAT5', 'name' => 'VAT', 'rate_pct' => '5']);
+        $invoice = $this->service->saveLines($this->draftInvoice(), [['description' => 'Freight', 'amount' => '100', 'tax_code_id' => $tax->id]], $this->financeUser);
+        $invoice = $this->service->issue($invoice, $this->financeUser);
+        $tax->update(['rate_pct' => '10']);
+        $credit = $this->service->creditNote($invoice, $this->financeUser, 'Correction');
+        $this->assertSame('-105.00', $credit->total);
+        $this->assertSame('-5.00', $credit->tax_amount);
+        $this->assertSame('5.0000', $credit->lines()->firstOrFail()->tax_rate_pct);
+    }
 }

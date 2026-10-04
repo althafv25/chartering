@@ -1,426 +1,82 @@
-# Offshore Chartering & Vessel Operations: Deployment Runbook
+# Offshore deployment runbook
 
-**Version:** 1.0  
-**Last Updated:** 2026-10-04  
-**Status:** Phase 14 (Testing Hardening)
+Updated: 2026-10-04. Current repair evidence and remaining product scope are in [SYSTEM-AUDIT-2026-10-04.md](SYSTEM-AUDIT-2026-10-04.md).
 
----
+## Release checks
 
-## Table of Contents
-1. [Pre-Deployment Checklist](#pre-deployment-checklist)
-2. [Deployment Steps](#deployment-steps)
-3. [Post-Deployment Verification](#post-deployment-verification)
-4. [Rollback Procedures](#rollback-procedures)
-5. [Known Issues](#known-issues)
-6. [On-Call Playbook](#on-call-playbook)
+The GitHub Actions workflow `.github/workflows/checks.yml` runs the following against committed Composer/npm locks and isolated databases:
 
----
+```bash
+# backend/
+composer install --no-interaction --prefer-dist
+APP_ENV=testing DB_DATABASE=offshore DB_URL='' vendor/bin/phpunit
+vendor/bin/pint --test
+vendor/bin/phpstan analyse --memory-limit=1024M --no-progress
+composer audit
 
-## Pre-Deployment Checklist
+# frontend/
+npm ci
+npm run lint
+npm run build
+npm test
+npm audit
+```
 
-### 48 Hours Before
-- [ ] Notify stakeholders of deployment window
-- [ ] Confirm change advisory board approval
-- [ ] Schedule war room (Slack channel: #offshore-deploy)
-- [ ] Prepare rollback plan and test it in staging
+`npm run build` includes TypeScript validation; `npm run type-check` runs it separately.
 
-### 24 Hours Before
-- [ ] Run full test suite: `cd backend && php artisan test`
-- [ ] Run linters: `./vendor/bin/pint --test && ./vendor/bin/phpstan analyse`
-- [ ] Run frontend tests: `cd frontend && npm run test && npm run build`
-- [ ] Run E2E tests: `cd frontend && npm run e2e` (Chromium)
-- [ ] Backup production database (see BACKUP-SETUP.md)
-- [ ] Create deployment branch: `git checkout -b deploy/YYYY-MM-DD`
+## Deploy
 
-### 1 Hour Before
-- [ ] Verify database backup completed successfully
-- [ ] Clear application caches: `php artisan cache:clear`
-- [ ] Create maintenance window (if needed): `php artisan down`
-- [ ] Have SSH access credentials ready
-- [ ] Verify VPN access to production
+Use the actual release path and HTTPS origins for the target environment. `/Applications/ServBay/www/offshore`, API port `8001`, and frontend port `5173` are local-development examples, not production addresses.
 
----
+1. Capture a recoverable database **and documents** set using [BACKUP-SETUP.md](BACKUP-SETUP.md). Record the current release revision, matching `APP_KEY`, document root, and recovery-set location.
+2. Install the chosen release and its locked dependencies. From its `backend/` directory:
 
-## Deployment Steps
-
-### Phase 1: Pre-Deployment (5 minutes)
-
-1. **Enter maintenance mode** (if downtime acceptable)
    ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   php artisan down --render=errors::503
-   ```
-
-2. **Create a deployment log**
-   ```bash
-   DEPLOY_LOG="/tmp/offshore-deploy-$(date +%Y%m%d_%H%M%S).log"
-   echo "Deployment started at $(date)" > "$DEPLOY_LOG"
-   ```
-
-### Phase 2: Backend Deployment (10-15 minutes)
-
-1. **Pull latest code**
-   ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   git fetch origin
-   git checkout main  # or your deploy branch
-   git pull origin main
-   ```
-
-2. **Install/update dependencies**
-   ```bash
-   composer install --no-dev --no-interaction
-   ```
-
-3. **Run database migrations**
-   ```bash
+   php artisan down
+   composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
    php artisan migrate --force
-   echo "Migrations complete at $(date)" >> "$DEPLOY_LOG"
-   ```
-
-4. **Clear application cache**
-   ```bash
+   php artisan db:seed --class=RolesAndPermissionsSeeder --force
    php artisan config:cache
    php artisan route:cache
    php artisan view:cache
-   php artisan cache:clear
+   php artisan queue:restart
    ```
 
-5. **Warm up caches** (for performance)
-   ```bash
-   php artisan optimize
-   ```
+   The role seeder restores the shipped built-in role matrix. Preserve deployment-specific overrides separately. Review `INVOICES_REQUIRE_APPROVAL` in the deployment environment; `true` requires approval before invoice issue. Detailed amount thresholds are not implemented.
 
-### Phase 3: Frontend Deployment (5-10 minutes)
+   Migration `2026_10_04_000000_preserve_released_invoice_revenue_links` preserves historical invoice lines and changes uniqueness to active billing links. It also releases links on existing cancelled/deleted invoices. Once revenue has been re-invoiced, restoring the old lifetime-unique schema is intentionally refused to avoid losing billing history.
 
-1. **Build frontend**
-   ```bash
-   cd /Applications/ServBay/www/offshore/frontend
-   npm ci --no-optional
-   npm run build
-   ```
+3. From `frontend/`, run `npm ci && npm run build`. Publish `dist/` through the production web server. Keep optional platform dependencies enabled: Vite/Rollup use them.
+4. Restart/reload PHP workers as appropriate for the deployment, then run `php artisan up` from `backend/`.
 
-2. **Verify build output**
-   ```bash
-   ls -lh dist/
-   # Should see main.[hash].js and other bundled files
-   ```
-
-### Phase 4: Post-Deployment (5 minutes)
-
-1. **Exit maintenance mode**
-   ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   php artisan up
-   ```
-
-2. **Health check**
-   ```bash
-   curl -s http://localhost:8001/api/v1/up | head -20
-   curl -s http://localhost:5173 | head -20
-   ```
-
-3. **Log deployment completion**
-   ```bash
-   echo "Deployment completed successfully at $(date)" >> "$DEPLOY_LOG"
-   ```
-
-### Total Estimated Time: 25-40 minutes
-
----
-
-## Post-Deployment Verification
-
-### Immediate (First 5 minutes)
-
-1. **API health checks**
-   ```bash
-   # Health endpoint
-   curl -s http://localhost:8001/api/v1/up
-   
-   # Login test
-   curl -X POST http://localhost:8001/api/v1/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"email":"admin@offshore.local","password":"Admin@12345"}'
-   ```
-
-2. **Frontend loading**
-   - Open http://localhost:5173 in browser
-   - Verify login page renders
-   - Clear browser cache (Cmd+Shift+R)
-
-3. **Database connectivity**
-   ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   php artisan tinker --execute="echo \Illuminate\Support\Facades\DB::connection()->getPDO() ? 'DB OK' : 'DB FAIL';"
-   ```
-
-### Short-term (Within 1 hour)
-
-1. **Smoke tests**
-   - [ ] Login as admin
-   - [ ] Navigate to Dashboard
-   - [ ] View a voyage
-   - [ ] View an invoice
-   - [ ] Check statistics page loads
-
-2. **Monitor logs**
-   ```bash
-   tail -50 /Applications/ServBay/www/offshore/backend/storage/logs/laravel-*.log
-   tail -50 /Applications/ServBay/www/offshore/frontend/logs/*.log (if applicable)
-   ```
-
-3. **Performance baseline**
-   - Check page load times are within 500ms
-   - Monitor CPU/memory usage
-   - Verify no n+1 queries in logs
-
-### Long-term (Throughout the day)
-
-1. **Monitor critical flows**
-   - [ ] Create and issue an invoice
-   - [ ] Update a voyage
-   - [ ] Generate a report
-   - [ ] Create a contract
-
-2. **Check for errors**
-   ```bash
-   # Look for exceptions
-   grep -i "exception\|error" /Applications/ServBay/www/offshore/backend/storage/logs/laravel-*.log | head -20
-   ```
-
-3. **Performance monitoring**
-   - Average response time: < 500ms
-   - Error rate: < 0.1%
-   - Database query time: < 200ms per request
-
----
-
-## Rollback Procedures
-
-### Scenario 1: Critical Bug Found (Immediate Rollback)
-
-1. **Enter maintenance mode**
-   ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   php artisan down --render=errors::503
-   ```
-
-2. **Restore database** (if migrations failed)
-   ```bash
-   # From latest backup
-   gunzip -c /Applications/ServBay/www/offshore/backups/offshore_YYYYMMDD_HHMMSS.sql.gz | \
-     mysql -h 127.0.0.1 -u root -p offshore
-   ```
-
-3. **Revert code to previous commit**
-   ```bash
-   cd /Applications/ServBay/www/offshore
-   git checkout HEAD~1 -- backend/
-   git checkout HEAD~1 -- frontend/
-   ```
-
-4. **Redeploy using previous steps**
-   ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   composer install --no-dev --no-interaction
-   php artisan migrate --force
-   php artisan up
-   ```
-
-5. **Post-rollback verification**
-   - [ ] API responds to requests
-   - [ ] Login works
-   - [ ] Dashboard loads
-   - [ ] Critical business flows work
-
-### Scenario 2: Partial Rollback (Backend only)
-
-1. **If frontend is fine**
-   ```bash
-   cd /Applications/ServBay/www/offshore/backend
-   git checkout HEAD~1
-   composer install --no-dev
-   php artisan migrate:rollback --step=1
-   php artisan cache:clear
-   ```
-
-2. **Verify and exit maintenance**
-   ```bash
-   php artisan up
-   ```
-
-### Scenario 3: Slow Rollback (Planned, after investigation)
-
-1. **Create feature branch for bugfix**
-   ```bash
-   git checkout -b hotfix/issue-name
-   # Make fixes
-   git commit -m "Fix: [issue description]"
-   ```
-
-2. **Tag the bad release for investigation**
-   ```bash
-   git tag -a bad/2026-10-04-v1 -m "Rolled back due to [reason]"
-   ```
-
-3. **Deploy corrected version**
-   - Run through full deployment steps
-   - Run full test suite
-   - Deploy to staging first
-
-### Rollback Checklist
-
-After any rollback:
-- [ ] Database integrity verified (SHOW TABLE STATUS)
-- [ ] All tables present and accessible
-- [ ] User sessions still valid
-- [ ] No data loss (compare row counts with backup)
-- [ ] Audit logs show rollback event
-- [ ] Stakeholders notified
-
----
-
-## Known Issues
-
-### Issue #1: Database Migration Timeout
-**Symptoms:** Migration hangs after 30 seconds  
-**Cause:** Large data migration or table lock  
-**Fix:**
-```bash
-# Check table locks
-SHOW OPEN TABLES WHERE in_use > 0;
-# Kill blocking query if needed
-KILL QUERY process_id;
-# Restart migration with increased timeout
-php artisan migrate --force --step=1
-```
-
-### Issue #2: Cache Coherency After Deployment
-**Symptoms:** Old config values displayed despite cache clear  
-**Cause:** Op-cache not cleared  
-**Fix:**
-```bash
-# Restart PHP-FPM
-brew services restart php@8.2
-# Or if using Laravel Sail: sail artisan cache:clear
-```
-
-### Issue #3: Frontend Build Fails
-**Symptoms:** `npm run build` exits with code 1  
-**Cause:** Missing dependency or TypeScript error  
-**Fix:**
-```bash
-cd /Applications/ServBay/www/offshore/frontend
-npm ci --force  # Clean install
-npm run build
-# If still fails, check for TS errors
-npm run type-check
-```
-
-### Issue #4: Permission Errors After Migration
-**Symptoms:** "You do not have permission to perform this action"  
-**Cause:** Seeder didn't run or role cache stale  
-**Fix:**
-```bash
-php artisan db:seed --class=RolesAndPermissionsSeeder
-php artisan cache:clear
-# Verify user has role assigned
-php artisan tinker
-# In tinker: User::find(1)->roles;
-```
-
----
-
-## On-Call Playbook
-
-### Emergency Response (during/after deployment)
-
-**Time: T+0 to T+5 minutes**
-- [ ] Alert received - acknowledge in #offshore-deploy
-- [ ] Determine severity: Critical / High / Medium / Low
-- [ ] Identify affected component (backend / frontend / database)
-- [ ] Collect error logs and screenshots
-
-**Time: T+5 to T+15 minutes**
-- [ ] Run health check API
-- [ ] Check database connectivity
-- [ ] Review recent deployment log
-- [ ] Check error rate spike in logs
-- [ ] Determine if rollback needed
-
-**Time: T+15+ minutes**
-- If **minor issue**: Create hotfix branch, fix, test, deploy
-- If **critical issue**: Initiate rollback (see Rollback Procedures)
-- If **unclear**: Stand up war room call with engineering lead
-
-### On-Call Contacts
-
-- **Primary Engineer:** TBD
-- **Backup Engineer:** TBD
-- **Product Owner:** TBD
-- **Database Admin:** TBD
-
-### Escalation Path
-
-1. Page on-call engineer
-2. Alert engineering lead if no response in 5 minutes
-3. Alert product owner if revenue-impacting
-4. Alert exec on-call if P1 severity
-
-### Communication Template
-
-**For Slack #offshore-deploy channel:**
-```
-🚨 DEPLOYMENT INCIDENT - [TIME]
-Severity: [CRITICAL|HIGH|MEDIUM]
-Component: [Backend|Frontend|Database]
-Status: [INVESTIGATING|MITIGATING|RESOLVED]
-Impact: [Description]
-ETA: [Estimated time to resolution]
-```
-
----
-
-## Performance Benchmarks (Post-Deployment)
-
-### Expected Metrics
-
-| Metric | Target | Alert Threshold |
-|--------|--------|-----------------|
-| Page Load Time | < 500ms | > 1000ms |
-| API Response (avg) | < 200ms | > 500ms |
-| Database Query | < 50ms | > 100ms |
-| Error Rate | < 0.1% | > 1% |
-| CPU Usage | < 60% | > 80% |
-| Memory Usage | < 70% | > 85% |
-
-### Monitoring Tools
+## Verify the deployed release
 
 ```bash
-# Watch real-time metrics
-watch -n 2 'free -h; echo "---"; ps aux | grep php'
-
-# Monitor error log growth
-watch -n 5 'wc -l /Applications/ServBay/www/offshore/backend/storage/logs/laravel-*.log'
-
-# Monitor database
-mysql -h 127.0.0.1 -u root -p -e "SHOW STATUS LIKE 'Threads%';"
+API_ORIGIN=https://api.example.com
+WEB_ORIGIN=https://offshore.example.com
+curl --fail --silent --show-error "$API_ORIGIN/up"
+curl --fail --silent --show-error "$WEB_ORIGIN/"
 ```
 
----
+Laravel's public health endpoint is **`/up`**. `/api/v1/up` requires authentication. Check database connectivity separately through the deployment's normal observability tooling; a health response alone is not a full workflow test.
 
-## Documentation References
+Use a deployment account to sign in, reload an authenticated page, open a voyage, and verify expected role restrictions. Exercise draft billing and a representative calculation on designated test records. Authentication responses place the token at `data.token`; subsequent requests use `Authorization: Bearer <token>`.
 
-- **Architecture:** `docs/03-ARCHITECTURE.md`
-- **Database Schema:** `docs/04-DATABASE-SCHEMA.md`
-- **API Documentation:** `docs/06-API.md`
-- **Deployment:** `docs/12-DEPLOYMENT.md`
-- **Backup Procedures:** `docs/BACKUP-SETUP.md`
-- **Business Rules:** `docs/07-BUSINESS-RULES.md`
+Monitor application/worker logs, failed jobs, response errors, and the scheduled task runner. Confirm backup monitoring and off-site replication in the actual environment.
 
----
+## Rollback and recovery
 
-**Last Updated:** 2026-10-04  
-**Next Review:** 2026-10-11  
-**Owner:** DevOps Team
+- Record the exact prior release; do not infer it from `HEAD~1`.
+- Enter maintenance mode and stop writes before recovery.
+- Prefer a forward repair when the new schema contains historical billing relationships that the previous schema cannot represent.
+- Restore a matched database/document pair into an isolated target first, as described in the backup guide. Validate it before switching the application to that recovered state.
+- Redeploy the matching code and lockfiles, rebuild caches, restart workers, and repeat the session/role/workflow smoke checks.
+- Never run `migrate:fresh`, PHPUnit, or the E2E preparer against the live database.
+
+## References
+
+- [03 — Modules](03-MODULES.md)
+- [04 — Database design](04-DATABASE-ERD.md)
+- [06 — API specification](06-API-SPECIFICATION.md)
+- [07 — Business rules](07-BUSINESS-RULES.md)
+- [12 — Deployment](12-DEPLOYMENT.md)

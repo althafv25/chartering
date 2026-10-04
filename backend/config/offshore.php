@@ -31,6 +31,11 @@ return [
     */
     'base_currency' => env('BASE_CURRENCY', 'USD'),
 
+    // Explicit deployment policy; detailed amount thresholds remain a business decision.
+    'approvals' => [
+        'invoices_require_approval' => (bool) env('INVOICES_REQUIRE_APPROVAL', false),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | AIS (docs/09). Provider: none (default) | manual. Credentials for a future commercial

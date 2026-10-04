@@ -9,6 +9,7 @@ use App\Models\LaytimeException;
 use App\Models\LaytimeSofEvent;
 use App\Models\User;
 use App\Models\Voyage;
+use App\Services\Chartering\ApprovalGuard;
 use App\Services\Finance\VoyageExpenseService;
 use App\Services\Finance\VoyageRevenueService;
 use App\Support\Decimal;
@@ -25,6 +26,8 @@ class LaytimeService
     private const EDITABLE = ['contract_id', 'calculation_type', 'fixed_hours', 'cargo_quantity', 'rate_per_day', 'rate_unit', 'terms_code', 'terms_definition',
         'nor_tendered_at', 'nor_accepted_at', 'notice_time_hours', 'laytime_commenced_at', 'laytime_completed_at', 'demurrage_rate_per_day', 'despatch_rate_per_day',
         'currency', 'once_on_demurrage_rule', 'remarks'];
+
+    public function __construct(private readonly ApprovalGuard $approvals) {}
 
     /** @param array<string, mixed> $data */
     public function save(?LaytimeCalculation $calc, array $data, User $actor): LaytimeCalculation
@@ -52,6 +55,9 @@ class LaytimeService
             }
             // Money needs a currency: default to the voyage's, so agreeing a calculation can always book its demurrage or despatch.
             $c->currency ??= Voyage::query()->whereKey($c->voyage_id)->value('currency');
+            if ($c->isDirty(array_diff(self::EDITABLE, ['remarks']))) {
+                $this->invalidate($c);
+            }
             $c->setAttribute('updated_by', $actor->id);
             $c->save();
 
@@ -63,6 +69,7 @@ class LaytimeService
     {
         return DB::transaction(function () use ($calc, $actor) {
             $c = LaytimeCalculation::query()->lockForUpdate()->findOrFail($calc->id);
+            $this->assertEditable($c);
             $exceptions = $c->exceptions()->get()->map(fn ($e) => [
                 'from_at' => $e->from_at,
                 'to_at' => $e->to_at,
@@ -105,9 +112,7 @@ class LaytimeService
             if ($c->status !== 'draft') {
                 throw new BusinessRuleException('Only a draft laytime can be submitted.', 'invalid_status_transition');
             }
-            if ($c->allowed_hours === null || $c->used_hours === null) {
-                throw new BusinessRuleException('The calculation must be completed before submission.', 'calculation_incomplete');
-            }
+            $this->assertCalculated($c);
             $c->fill(['status' => 'submitted', 'submitted_at' => now(), 'submitted_by' => $actor->id, 'updated_by' => $actor->id])->save();
 
             return $c;
@@ -121,6 +126,8 @@ class LaytimeService
             if ($c->status !== 'submitted') {
                 throw new BusinessRuleException('Only a submitted laytime can be agreed.', 'invalid_status_transition');
             }
+            $this->assertCalculated($c);
+            $this->approvals->assertNotSelfDecision($c->submitted_by, $actor);
             $c->fill(['status' => 'agreed', 'agreed_at' => now(), 'agreed_by' => $actor->id, 'updated_by' => $actor->id])->save();
 
             // Laytime→Revenue/Expense automation: Create voyage revenue for demurrage or expense for despatch
@@ -154,6 +161,19 @@ class LaytimeService
         }
     }
 
+    private function assertCalculated(LaytimeCalculation $c): void
+    {
+        if ($c->calculated_at === null || $c->allowed_hours === null || $c->used_hours === null) {
+            throw new BusinessRuleException('Calculate the current inputs before submitting or agreeing laytime.', 'calculation_incomplete');
+        }
+    }
+
+    private function invalidate(LaytimeCalculation $c): void
+    {
+        $c->fill(array_fill_keys(['allowed_hours', 'used_hours', 'difference_hours', 'demurrage_amount', 'despatch_amount',
+            'calculation_version', 'trace', 'calculated_at'], null));
+    }
+
     /** @param array<string, mixed> $data */
     public function addSofEvent(LaytimeCalculation $calc, array $data, User $actor): LaytimeSofEvent
     {
@@ -166,6 +186,7 @@ class LaytimeService
                 'description' => $data['description'] ?? null,
                 'source' => $data['source'] ?? 'manual',
             ]);
+            $this->invalidate($c);
             $c->setAttribute('updated_by', $actor->id)->save();
 
             return $event;
@@ -181,6 +202,7 @@ class LaytimeService
                 throw new BusinessRuleException('The SOF event does not belong to this calculation.', 'invalid_relation', [], 422);
             }
             $event->delete();
+            $this->invalidate($c);
             $c->setAttribute('updated_by', $actor->id)->save();
         });
     }
@@ -198,6 +220,7 @@ class LaytimeService
                 'pct_counted' => Decimal::round((string) ($data['pct_counted'] ?? '0'), 4),
                 'remarks' => $data['remarks'] ?? null,
             ]);
+            $this->invalidate($c);
             $c->setAttribute('updated_by', $actor->id)->save();
 
             return $exception;
@@ -218,6 +241,7 @@ class LaytimeService
                 $fields['pct_counted'] = Decimal::round((string) $fields['pct_counted'], 4);
             }
             $exception->fill($fields)->save();
+            $this->invalidate($c);
             $c->setAttribute('updated_by', $actor->id)->save();
 
             return $exception;
@@ -233,6 +257,7 @@ class LaytimeService
                 throw new BusinessRuleException('The exception does not belong to this calculation.', 'invalid_relation', [], 422);
             }
             $exception->delete();
+            $this->invalidate($c);
             $c->setAttribute('updated_by', $actor->id)->save();
         });
     }

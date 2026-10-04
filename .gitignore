@@ -42,7 +42,6 @@ backend/storage/debugbar/
 backend/public/hot
 backend/public/storage
 backend/*.phar
-backend/composer.lock
 backend/.php_cs.cache
 backend/.php-cs-fixer.cache
 backend/.phpstan.cache
@@ -73,7 +72,6 @@ frontend/.turbo/
 database.sqlite
 database.sqlite3
 offshore.db
-offshore_test.db
 
 # Private Files & Documents
 uploads/
@@ -101,7 +99,6 @@ $RECYCLE.BIN/
 # npm
 npm-debug.log*
 npm-error.log*
-package-lock.json
 
 # yarn
 yarn-debug.log*
@@ -120,12 +117,6 @@ coverage/
 .nyc_output/
 .coverage
 *.lcov
-
-# Playwright (E2E tests)
-frontend/test-results/
-frontend/playwright-report/
-frontend/blob-report/
-frontend/playwright/.cache/
 
 # IDE specific
 .vscode/settings.json
@@ -199,8 +190,4 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Lock files (optional - uncomment if you want to commit them)
-# composer.lock
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+# Composer and npm lockfiles are tracked for reproducible installs.

@@ -2,8 +2,10 @@
 
 namespace App\Services\Operations;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\VoyageRevenueStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Invoice;
 use App\Models\User;
 use App\Models\Voyage;
 use App\Models\VoyageSnapshot;
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  *   → completed (OP-03: all port calls sailed/cancelled, no open captain reports)
  *   → finalized (writes the immutable `final` snapshot; OP-04 financial gates below)
  *   finalized → completed via reopen (OP-05: reason, old final kept as a milestone)
- *   any non-terminal → cancelled (reason; OP: nothing invoiced — no invoices exist before phase 10)
+ *   any non-terminal → cancelled (reason; OP: nothing actively invoiced)
  * Commencement (BR-OP-03 proposal) = first move out of draft/nominated.
  *
  * OP-04 finalization gates (each may be explicitly waived with a reason, since several
@@ -253,6 +255,16 @@ class VoyageLifecycleService
         return $this->locked($voyage, function (Voyage $v) use ($actor, $reason) {
             if (in_array($v->status, Voyage::LOCKED, true)) {
                 throw new BusinessRuleException("A {$v->status} voyage cannot be cancelled.", 'invalid_status_transition');
+            }
+            $invoiced = Invoice::query()->where('status', '!=', InvoiceStatus::Cancelled)
+                ->where('invoice_type', '!=', 'credit_note')
+                ->where(function ($query) use ($v) {
+                    $query->where('voyage_id', $v->id)
+                        ->orWhereHas('lines', fn ($lines) => $lines->whereNull('released_at')
+                            ->whereHas('voyageRevenue', fn ($revenues) => $revenues->where('voyage_id', $v->id)));
+                })->exists();
+            if ($invoiced || $v->voyageRevenues()->where('status', VoyageRevenueStatus::Invoiced)->exists()) {
+                throw new BusinessRuleException('Cancel or credit the voyage invoices before cancelling the voyage.', 'voyage_has_invoices');
             }
             $from = $v->status;
             $v->fill(['status' => 'cancelled', 'cancelled_at' => now(), 'status_reason' => $reason, 'status_changed_at' => now(), 'updated_by' => $actor->id])->save();

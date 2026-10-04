@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\DB;
  * Report catalogue (03 M17). Each report returns {columns, rows} of display-ready strings so the
  * same payload feeds the JSON view and the CSV export. Money is in base currency as 2-dp strings.
  * Report permission = reports.view plus the report's own permission (financial reports need
- * commercial.financials.view). CSV, Excel (.xlsx) and PDF exports need reports.export.
+ * commercial.financials.view for aggregated profitability; line registers use revenues.view/expenses.view).
+ * CSV, Excel (.xlsx) and PDF exports need reports.export.
  */
 class ReportService
 {
@@ -29,8 +30,8 @@ class ReportService
     private const CATALOGUE = [
         'voyage-pnl' => ['Voyage P&L', Permission::FinancialsView, ['vessel_id', 'status', 'from', 'to']],
         'outstanding-invoices' => ['Outstanding invoices (aging)', Permission::InvoicesView, ['customer_company_id', 'as_of']],
-        'revenue' => ['Revenue lines', Permission::FinancialsView, ['voyage_id', 'status', 'from', 'to']],
-        'expenses' => ['Expense lines', Permission::FinancialsView, ['voyage_id', 'status', 'from', 'to']],
+        'revenue' => ['Revenue lines', Permission::RevenuesView, ['voyage_id', 'status', 'from', 'to']],
+        'expenses' => ['Expense lines', Permission::ExpensesView, ['voyage_id', 'status', 'from', 'to']],
         'estimated-vs-actual' => ['Estimated vs actual (voyages)', Permission::FinancialsView, ['vessel_id', 'status', 'from', 'to']],
         'vessel-profitability' => ['Vessel profitability', Permission::FinancialsView, ['status', 'from', 'to']],
         'voyage-status' => ['Voyage status', Permission::VoyagesView, ['vessel_id', 'status', 'from', 'to']],

@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Finance\InvoiceService;
+use App\Services\Finance\PayableService;
 use App\Services\Finance\PaymentService;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -182,5 +183,79 @@ class PaymentServiceTest extends TestCase
         $this->assertSame('1000.00', $reversed->unallocated_amount);
         $this->assertSame(InvoiceStatus::Issued, $invoice->refresh()->status);
         $this->assertSame('0.00', $invoice->amount_paid);
+    }
+
+    public function test_cross_currency_limits_use_the_target_currency_and_roll_back_the_whole_batch(): void
+    {
+        ExchangeRate::query()->create(['rate_date' => '2026-10-05', 'base_currency' => 'EUR', 'quote_currency' => 'USD', 'rate' => '1.20000000', 'source' => 'manual']);
+        $payables = app(PayableService::class);
+        $payable = $payables->create(['supplier_company_id' => $this->customer->id, 'supplier_invoice_ref' => 'FX-1', 'issue_date' => '2026-10-01', 'due_date' => '2026-10-31', 'currency' => 'USD', 'subtotal' => '100'], $this->financeUser);
+        $payable = $payables->approve($payable, $this->userWithRole(UserRole::Finance));
+
+        foreach ([['invoice_id', $this->issuedInvoice('USD', '100'), 'received'], ['payable_id', $payable, 'paid']] as [$key, $target, $direction]) {
+            $payment = $this->service->create(['direction' => $direction, 'company_id' => $this->customer->id, 'payment_date' => '2026-10-05', 'amount' => '100', 'currency' => 'EUR'], $this->financeUser);
+            try {
+                // First row fits, second would make USD 108 against USD 100.
+                $this->service->allocate($payment, [[$key => $target->id, 'amount' => '50'], [$key => $target->id, 'amount' => '40']], $this->financeUser);
+                $this->fail('Cross-currency over-allocation was accepted.');
+            } catch (BusinessRuleException $e) {
+                $this->assertSame('allocation_exceeds_balance', $e->errorCode);
+            }
+            $this->assertSame('0.00', $target->refresh()->amount_paid);
+            $this->assertSame('100.00', $payment->refresh()->unallocated_amount);
+            $this->assertSame(0, $payment->allocations()->count());
+            $this->service->allocate($payment, [[$key => $target->id, 'amount' => '50']], $this->financeUser);
+            $this->assertSame('40.00', $target->refresh()->balance);
+        }
+    }
+
+    public function test_allocations_require_one_target_with_matching_company_and_direction(): void
+    {
+        $invoice = $this->issuedInvoice('USD', '100');
+        $other = Company::query()->create(['code' => 'OTHER', 'legal_name' => 'Other', 'normalized_name' => 'other']);
+        foreach ([['paid', $this->customer->id], ['received', $other->id]] as [$direction, $company]) {
+            $payment = $this->service->create(['direction' => $direction, 'company_id' => $company, 'payment_date' => '2026-10-05', 'amount' => '100', 'currency' => 'USD'], $this->financeUser);
+            try {
+                $this->service->allocate($payment, [['invoice_id' => $invoice->id, 'amount' => '100']], $this->financeUser);
+                $this->fail('Mismatched payment was accepted.');
+            } catch (BusinessRuleException $e) {
+                $this->assertSame('allocation_target_mismatch', $e->errorCode);
+            }
+            $this->assertSame('100.00', $payment->refresh()->unallocated_amount);
+        }
+        try {
+            $this->service->allocate($payment, [['invoice_id' => $invoice->id, 'payable_id' => 1, 'amount' => '100']], $this->financeUser);
+            $this->fail('Ambiguous allocation was accepted.');
+        } catch (BusinessRuleException $e) {
+            $this->assertSame('validation_failed', $e->errorCode);
+        }
+        $this->assertSame('0.00', $invoice->refresh()->amount_paid);
+    }
+
+    public function test_same_foreign_currency_records_realised_fx_at_the_two_snapshot_rates(): void
+    {
+        ExchangeRate::query()->create(['rate_date' => '2026-10-01', 'base_currency' => 'EUR', 'quote_currency' => 'USD', 'rate' => '1.10000000', 'source' => 'manual']);
+        ExchangeRate::query()->create(['rate_date' => '2026-10-05', 'base_currency' => 'EUR', 'quote_currency' => 'USD', 'rate' => '1.20000000', 'source' => 'manual']);
+        $invoice = $this->issuedInvoice('EUR', '100');
+        $payment = $this->service->create(['direction' => 'received', 'company_id' => $this->customer->id, 'payment_date' => '2026-10-05', 'amount' => '100', 'currency' => 'EUR'], $this->financeUser);
+        $allocation = $this->service->allocate($payment, [['invoice_id' => $invoice->id, 'amount' => '100']], $this->financeUser)[0];
+        $this->assertSame('10.00', $allocation->fx_difference_base);
+        $this->assertSame('0.00', $invoice->refresh()->balance);
+    }
+
+    public function test_crediting_a_paid_invoice_releases_receipts_and_preserves_reversal(): void
+    {
+        $invoice = $this->issuedInvoice('USD', '100');
+        $payment = $this->service->create(['direction' => 'received', 'company_id' => $this->customer->id, 'payment_date' => '2026-10-05', 'amount' => '100', 'currency' => 'USD'], $this->financeUser);
+        $this->service->allocate($payment, [['invoice_id' => $invoice->id, 'amount' => '100']], $this->financeUser);
+        $credit = $this->invoices->creditNote($invoice, $this->financeUser, 'Full credit');
+        $this->assertSame('-100.00', $credit->total);
+        $this->assertSame('100.00', $payment->refresh()->unallocated_amount);
+        $this->assertSame('0.00', $invoice->refresh()->amount_paid);
+        $this->assertSame(0, $payment->allocations()->count());
+        $this->assertDatabaseHas('activity_log', ['log_name' => 'payments', 'event' => 'unallocated']);
+        $this->service->reverse($payment, $this->financeUser, 'Receipt reversed');
+        $this->assertSame(PaymentStatus::Reversed, $payment->refresh()->status);
+        $this->assertSame(InvoiceStatus::Cancelled, $invoice->refresh()->status);
     }
 }
