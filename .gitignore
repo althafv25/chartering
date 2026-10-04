@@ -1,0 +1,206 @@
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.vim/
+.emacs.d/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.log
+Thumbs.db
+Desktop.ini
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env.backup
+.env.production.local
+.env.test.local
+.env.development.local
+
+# Backend (Laravel)
+backend/vendor/
+backend/node_modules/
+backend/.phpunit.result.cache
+backend/bootstrap/cache/
+backend/storage/logs/
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/storage/app/
+backend/storage/debugbar/
+backend/public/hot
+backend/public/storage
+backend/*.phar
+backend/composer.lock
+backend/.php_cs.cache
+backend/.php-cs-fixer.cache
+backend/.phpstan.cache
+backend/.pint.cache
+
+# Frontend (React/Node)
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env.local
+frontend/.env.*.local
+frontend/.cache/
+frontend/.vite/
+frontend/test-results/
+frontend/coverage/
+frontend/.next/
+frontend/out/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/.eslintcache
+frontend/.turbo/
+
+# Database
+*.sqlite
+*.sqlite3
+database.sqlite
+database.sqlite3
+offshore.db
+offshore_test.db
+
+# Private Files & Documents
+uploads/
+backups/
+private/
+temp/
+tmp/
+
+# Dependency directories
+node_modules/
+vendor/
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+[Dd]esktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# npm
+npm-debug.log*
+npm-error.log*
+package-lock.json
+
+# yarn
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
+
+# Build outputs
+dist/
+build/
+out/
+*.js.map
+*.css.map
+
+# Testing
+coverage/
+.nyc_output/
+.coverage
+*.lcov
+
+# Playwright (E2E tests)
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.vscode/*.code-snippets
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+.#*
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Passwords and secrets (catch all)
+*password*
+*secret*
+*token*
+*.key
+*.pem
+*.keystore
+*.jks
+
+# Generated files (should not be committed)
+.phpunit.result.cache
+.env.testing
+
+# Laravel specific
+bootstrap/cache/
+storage/app/
+storage/framework/
+storage/logs/
+.rnd
+
+# Large files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.tar.gz
+*.zip
+
+# Logs
+logs/
+*.log
+log/
+
+# Local development
+.vagrant
+Vagrantfile
+docker-compose.override.yml
+
+# Misc
+.cache/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Lock files (optional - uncomment if you want to commit them)
+# composer.lock
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

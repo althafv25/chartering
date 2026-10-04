@@ -1,0 +1,22 @@
+/** Record types that can own documents: label, and where the record lives in the SPA (none = plain text). */
+export const DOCUMENT_PARENTS: Record<string, { label: string; path?: (id: number) => string }> = {
+  voyages: { label: 'Voyage', path: (id) => `/operations/voyages/${id}` },
+  contracts: { label: 'Contract', path: (id) => `/contracts/${id}` },
+  fixtures: { label: 'Fixture', path: (id) => `/chartering/fixtures/${id}` },
+  offers: { label: 'Offer', path: (id) => `/chartering/offers/${id}` },
+  estimations: { label: 'Estimation', path: (id) => `/chartering/estimations/${id}` },
+  enquiries: { label: 'Enquiry', path: (id) => `/chartering/enquiries/${id}` },
+  invoices: { label: 'Invoice', path: (id) => `/commercial/invoices/${id}` },
+  payables: { label: 'Payable', path: (id) => `/commercial/payables/${id}` },
+  payments: { label: 'Payment', path: (id) => `/commercial/payments/${id}` },
+  'port-das': { label: 'Port DA', path: (id) => `/operations/port-da/${id}` },
+  'laytime-calculations': { label: 'Laytime', path: (id) => `/operations/laytime/${id}` },
+  vessels: { label: 'Vessel', path: (id) => `/fleet/vessels/${id}` },
+  companies: { label: 'Company', path: (id) => `/masters/companies/${id}` },
+  ports: { label: 'Port', path: (id) => `/masters/ports/${id}` },
+  'captain-reports': { label: 'Captain report' },
+  'offshore-activities': { label: 'Offshore activity' },
+  'bunker-stems': { label: 'Bunker stem' },
+  'offshore-locations': { label: 'Offshore location' },
+  users: { label: 'User' },
+};

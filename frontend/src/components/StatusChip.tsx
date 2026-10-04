@@ -1,0 +1,87 @@
+import { Chip, type ChipProps } from '@mui/material';
+import { humanize } from '../utils/format';
+
+type Tone = 'default' | 'success' | 'warning' | 'error' | 'info' | 'primary' | 'secondary';
+
+/** Map of status values → colour. Extended by later modules. Text label is always shown (not colour-only). */
+const tones: Record<string, Tone> = {
+  active: 'success',
+  inactive: 'default',
+  draft: 'default',
+  submitted: 'info',
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'error',
+  cancelled: 'default',
+  created: 'success',
+  updated: 'info',
+  deleted: 'error',
+  login: 'primary',
+  logout: 'default',
+  blocked: 'error',
+  sold: 'default',
+  scrapped: 'default',
+  // Chartering
+  under_review: 'warning',
+  nominated: 'info',
+  loading: 'primary',
+  loaded: 'primary',
+  sailing: 'primary',
+  discharging: 'primary',
+  finalized: 'success',
+  planned: 'default',
+  arrived: 'info',
+  berthed: 'primary',
+  sailed: 'success',
+  verified: 'success',
+  invoiced: 'secondary',
+  ordered: 'info',
+  delivered: 'success',
+  agreed: 'success',
+  disputed: 'error',
+  completed: 'default',
+  expired: 'error',
+  failed: 'error',
+  evaluating: 'info',
+  offered: 'primary',
+  fixed: 'success',
+  lost: 'error',
+  sent: 'primary',
+  received: 'info',
+  superseded: 'default',
+  accepted: 'success',
+  withdrawn: 'default',
+  declined: 'error',
+  calculated: 'success',
+  incomplete: 'warning',
+  stale: 'warning',
+  not_calculated: 'default',
+  direct_estimation: 'secondary',
+  // Vessel commercial track
+  available: 'success',
+  open: 'success',
+  on_hire: 'primary',
+  under_charter: 'primary',
+  off_hire: 'warning',
+  laid_up: 'default',
+  // Vessel operational track
+  at_sea: 'info',
+  at_port: 'default',
+  mobilizing: 'warning',
+  demobilizing: 'warning',
+  offshore_operation: 'primary',
+  standby: 'info',
+  maintenance: 'warning',
+  dry_dock: 'error',
+  // Finance
+  issued: 'primary',
+  partially_paid: 'warning',
+  overdue: 'error',
+  paid: 'success',
+  recorded: 'info',
+  reversed: 'error',
+};
+
+export function StatusChip({ status, label, ...props }: { status: string; label?: string } & Omit<ChipProps, 'label' | 'color'>) {
+  return <Chip size="small" variant="outlined" color={tones[status] ?? 'default'} label={label ?? humanize(status)} {...props} />;
+}
