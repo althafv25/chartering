@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, Grid, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import { invoicesApi, payablesApi, paymentsApi } from '../../api/finance';

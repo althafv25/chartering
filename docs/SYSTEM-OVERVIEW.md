@@ -497,15 +497,15 @@ npm run build
 
 1. Create a new Vessel:
    - Go to Masters → Vessels
-   - Click "Add Vessel"
-   - Fill: Name, IMO, DWT, vessel type
-   - Save
+   - Click "Add vessel"
+   - Fill: Short code, vessel name and vessel type; add IMO, DWT and other particulars as needed
+   - Click "Create vessel"
 
 2. Create a new Company (Client):
    - Go to Masters → Companies
-   - Click "Add Company"
-   - Fill: Name, legal entity, country
-   - Save
+   - Click "Add company"
+   - Fill: Legal name and at least one role (e.g. Customer); add country and contact details as needed
+   - Click "Create company"
 
 **Day 3: Create an Enquiry**
 

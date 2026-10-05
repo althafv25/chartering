@@ -43,8 +43,8 @@ export default function VesselsPage() {
   return (
     <>
       <PageHeader title="Vessels" subtitle="Vessel particulars, performance assumptions and status"
-        breadcrumbs={[{ label: 'Fleet' }, { label: 'Vessels' }]}
-        actions={<Can permission={P.VesselsCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/fleet/vessels/new')}>New vessel</Button></Can>} />
+        breadcrumbs={[{ label: 'Masters' }, { label: 'Vessels' }]}
+        actions={<Can permission={P.VesselsCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/fleet/vessels/new')}>Add vessel</Button></Can>} />
       <Card>
         <FilterBar search={search} onSearch={(v) => { setSearch(v); setPage(1); }} placeholder="Search name, code, IMO, MMSI, call sign, former name…">
           <ReferenceSelect type="vessel-types" label="Type" value={typeId} allowEmpty onChange={(v) => { setTypeId(v); setPage(1); }} sx={{ maxWidth: { md: 240 } }} />

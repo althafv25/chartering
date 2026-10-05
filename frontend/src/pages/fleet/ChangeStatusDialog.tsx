@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Alert, Button, DialogActions, DialogContent, Grid, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import { vesselsApi } from '../../api/masters';
 import { errorMessage } from '../../api/client';
 import { LoadingButton } from '../../components/LoadingButton';

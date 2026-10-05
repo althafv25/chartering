@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, DialogActions, DialogContent, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddLocationAltOutlined from '@mui/icons-material/AddLocationAltOutlined';
 import { aisApi } from '../../api/ais';
 import { errorMessage } from '../../api/client';

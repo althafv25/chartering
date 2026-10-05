@@ -91,8 +91,8 @@ export default function VesselFormPage() {
 
   return (
     <>
-      <PageHeader title={id ? `Edit ${vessel.data?.name}` : 'New vessel'}
-        breadcrumbs={[{ label: 'Fleet' }, { label: 'Vessels', to: '/fleet/vessels' }, ...(id ? [{ label: vessel.data?.name ?? '', to: `/fleet/vessels/${id}` }] : []), { label: id ? 'Edit' : 'New' }]}
+      <PageHeader title={id ? `Edit ${vessel.data?.name}` : 'Add vessel'}
+        breadcrumbs={[{ label: 'Masters' }, { label: 'Vessels', to: '/fleet/vessels' }, ...(id ? [{ label: vessel.data?.name ?? '', to: `/fleet/vessels/${id}` }] : []), { label: id ? 'Edit' : 'Add' }]}
         actions={<>
           <Button onClick={() => navigate(id ? `/fleet/vessels/${id}` : '/fleet/vessels')}>Cancel</Button>
           <LoadingButton variant="contained" loading={save.isPending} onClick={() => save.mutate()}>{id ? 'Save changes' : 'Create vessel'}</LoadingButton>

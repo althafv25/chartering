@@ -1,4 +1,5 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { Button, DialogActions, DialogContent, DialogContentText } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from './DrawerDialog';
 import { LoadingButton } from './LoadingButton';
 
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, loading, onConfirm, onClose }: {
@@ -12,8 +13,8 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
   onClose: () => void;
 }) {
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="xs" fullWidth aria-labelledby="confirm-title">
-      <DialogTitle id="confirm-title">{title}</DialogTitle>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
       </DialogContent>

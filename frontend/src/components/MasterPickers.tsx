@@ -30,7 +30,7 @@ export function CompanyAutocomplete({ value, initial, onChange, role, label, err
   value: number | null;
   initial?: CompanyRef | null;
   onChange: (id: number | null, company: CompanyRef | null) => void;
-  role?: string;
+  role?: string | string[];
 }) {
   const [input, setInput] = useState('');
   const [picked, setPicked] = useState<CompanyRef | null>(initial ?? null);
@@ -52,7 +52,7 @@ export function CompanyAutocomplete({ value, initial, onChange, role, label, err
       onChange={(_, v) => { setPicked(v); onChange(v?.id ?? null, v); }}
       getOptionLabel={(o) => `${o.legal_name} · ${o.code}`}
       isOptionEqualToValue={(a, b) => a.id === b.id}
-      noOptionsText={role ? `No ${role.replace('_', ' ')} found in the address book` : 'No companies found'}
+      noOptionsText={role ? `No ${(Array.isArray(role) ? role.join(' or ') : role).replace(/_/g, ' ')} found in the address book` : 'No companies found'}
       renderInput={(p) => <TextField {...p} label={label} required={required} error={!!error} helperText={error} />}
     />
   );
@@ -133,10 +133,11 @@ export function ReferenceSelect({ type, value, onChange, label, error, required,
   );
 }
 
-export function CurrencySelect({ value, onChange, label, error, required, disabled }: FieldProps & { value: string | null; onChange: (v: string | null) => void }) {
+export function CurrencySelect({ value, onChange, label, error, required, disabled, compact }: FieldProps & { value: string | null; onChange: (v: string | null) => void; compact?: boolean }) {
   const { data = [] } = useQuery({ queryKey: ['currencies', 'active'], queryFn: () => currenciesApi.list(true), staleTime: 5 * 60_000 });
   return (
     <TextField select label={label} required={required} disabled={disabled} value={value ?? ''} error={!!error} helperText={error}
+      slotProps={compact ? { select: { renderValue: (selected) => String(selected) } } : undefined}
       onChange={(e) => onChange(e.target.value || null)}>
       {!required && <MenuItem value="">—</MenuItem>}
       {data.map((c) => <MenuItem key={c.code} value={c.code}>{c.code} — {c.name}</MenuItem>)}

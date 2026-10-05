@@ -53,13 +53,14 @@ class CompanyService
     }
 
     /** Lightweight search for pickers. @return Collection<int, Company> */
-    public function lookup(string $term, ?string $role, int $limit = 20): Collection
+    public function lookup(string $term, string|array|null $role, int $limit = 20): Collection
     {
         $like = ListQuery::like($term);
+        $roles = is_array($role) ? array_values(array_filter($role)) : ($role ? [$role] : []);
 
         return Company::query()->with('roles')
             ->where('status', '!=', 'blocked')
-            ->when($role, fn ($q) => $q->withRole($role))
+            ->when($roles, fn ($q) => $q->whereHas('roles', fn ($r) => $r->whereIn('role', $roles)))
             ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w->where('legal_name', 'like', $like)
                 ->orWhere('trading_name', 'like', $like)->orWhere('code', 'like', $like)
                 ->orWhereHas('aliases', fn ($a) => $a->where('alias', 'like', $like))))

@@ -15,7 +15,7 @@ import { countryName } from '../../constants/countries';
 import { useDebounce } from '../../hooks/useDebounce';
 import { humanize } from '../../utils/format';
 import type { Company } from '../../types/masters';
-import { CompanyDialog } from './CompanyDialog';
+import { CompanyDrawer } from './CompanyDrawer';
 
 const TABS = ['', 'charterer', 'customer', 'owner', 'broker', 'agent', 'supplier'] as const;
 
@@ -27,7 +27,7 @@ export default function CompaniesPage() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(15);
-  const [dialog, setDialog] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const debounced = useDebounce(search);
 
   const q = { page, per_page: perPage, search: debounced || undefined, role: role || undefined, status: status || undefined };
@@ -50,10 +50,10 @@ export default function CompaniesPage() {
   return (
     <>
       <PageHeader
-        title="Address book"
+        title="Companies"
         subtitle="Owners, charterers, brokers, agents, suppliers and other maritime contacts"
-        breadcrumbs={[{ label: 'Masters' }, { label: 'Address book' }]}
-        actions={<Can permission={P.CompaniesCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog(true)}>New company</Button></Can>}
+        breadcrumbs={[{ label: 'Masters' }, { label: 'Companies' }]}
+        actions={<Can permission={P.CompaniesCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => setDrawerOpen(true)}>Add company</Button></Can>}
       />
       <Card>
         <Tabs value={role} onChange={(_, v) => { setParams(v ? { role: v } : {}); setPage(1); }} variant="scrollable" sx={{ px: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -70,7 +70,7 @@ export default function CompaniesPage() {
             emptyTitle="No companies found" emptyDescription="Adjust the filters or add a new company." />
         )}
       </Card>
-      <CompanyDialog open={dialog} company={null} defaultRole={role || undefined} onClose={() => setDialog(false)} onSaved={(c) => navigate(`/masters/companies/${c.id}`)} />
+      <CompanyDrawer open={drawerOpen} company={null} defaultRole={role || undefined} onClose={() => setDrawerOpen(false)} onSaved={(c) => navigate(`/masters/companies/${c.id}`)} />
     </>
   );
 }

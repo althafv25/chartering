@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Checkbox, DialogActions, DialogContent, FormControlLabel, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
+import AddIcon from '@mui/icons-material/Add';
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined';
 import { captainReportsApi } from '../../api/operations';
 import { DataTable, type Column } from '../../components/DataTable';
 import { ErrorState } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
 import { StatusChip } from '../../components/StatusChip';
+import { FormLayout, FormSection } from '../../components/FormSection';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
 import { REPORT_TYPES } from '../../constants/operations';
@@ -25,9 +29,10 @@ interface Props {
   voyageId?: number;
   readOnly?: boolean;
   showVessel?: boolean;
+  openReportRequest?: number;
 }
 
-export function CaptainReportsTable({ filters, vesselId, voyageId, readOnly, showVessel }: Props) {
+export function CaptainReportsTable({ filters, vesselId, voyageId, readOnly, showVessel, openReportRequest }: Props) {
   const qc = useQueryClient();
   const notify = useNotify();
   const { can } = useAuth();
@@ -51,6 +56,10 @@ export function CaptainReportsTable({ filters, vesselId, voyageId, readOnly, sho
 
   const canEdit = !readOnly && can(P.CaptainReportsUpdate);
   const canVerify = !readOnly && can(P.CaptainReportsVerify);
+  const canCreate = !readOnly && can(P.CaptainReportsCreate);
+  useEffect(() => {
+    if (openReportRequest && canCreate) setEditing(null);
+  }, [canCreate, openReportRequest]);
   const columns: Column<CaptainReport>[] = [
     { key: 'at', header: 'Reported (UTC)', render: (r) => <Box><Typography fontSize={14} fontWeight={600}>{formatDateTime(r.reported_at)}</Typography><Typography variant="caption" color="text.secondary">{labelOf(REPORT_TYPES, r.report_type)}</Typography></Box> },
     ...(showVessel ? [{ key: 'vessel', header: 'Vessel / voyage', render: (r: CaptainReport) => <Box><Typography fontSize={14}>{r.vessel?.name}</Typography><Typography variant="caption" color="text.secondary">{r.voyage?.voyage_number ?? 'No voyage'}</Typography></Box> }] : []),
@@ -72,9 +81,7 @@ export function CaptainReportsTable({ filters, vesselId, voyageId, readOnly, sho
 
   return (
     <>
-      {!readOnly && can(P.CaptainReportsCreate) && (
-        <Stack direction="row" justifyContent="flex-end" sx={{ px: 2, pt: 2 }}><Button variant="outlined" onClick={() => setEditing(null)}>New report</Button></Stack>
-      )}
+      {vesselId && canCreate && <Stack direction="row" justifyContent="flex-end" sx={{ p: 2 }}><Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing(null)}>New report</Button></Stack>}
       {list.isError ? <ErrorState error={list.error} onRetry={() => list.refetch()} /> : (
         <DataTable columns={columns} rows={list.data?.data ?? []} rowKey={(r) => r.id} loading={list.isFetching} meta={list.data?.meta} onPageChange={setPage}
           emptyTitle="No captain reports" emptyDescription="Only verified reports count towards actual distance and fuel." />
@@ -84,14 +91,16 @@ export function CaptainReportsTable({ filters, vesselId, voyageId, readOnly, sho
       <Dialog open={!!decision} onClose={() => setDecision(null)} maxWidth="xs" fullWidth>
         <DialogTitle>{decision?.kind === 'verify' ? 'Verify report' : 'Reject report'}</DialogTitle>
         <DialogContent dividers>
-          {decision?.kind === 'verify' && decision.r.port_call_id && ['arrival', 'departure'].includes(decision.r.report_type) && (
-            <FormControlLabel sx={{ mb: 1 }} control={<Checkbox checked={apply} onChange={(e) => setApply(e.target.checked)} />}
-              label={`Set the port call ${decision.r.report_type === 'arrival' ? 'ATA' : 'ATD'} from this report`} />
-          )}
-          <TextField label={decision?.kind === 'reject' ? 'Reason' : 'Comment (optional)'} required={decision?.kind === 'reject'} multiline minRows={2} value={text} onChange={(e) => setText(e.target.value)} />
+          <FormLayout><FormSection title={decision?.kind === 'verify' ? 'Verification' : 'Rejection reason'} icon={<FactCheckOutlined />}>
+            {decision?.kind === 'verify' && decision.r.port_call_id && ['arrival', 'departure'].includes(decision.r.report_type) && (
+              <FormControlLabel sx={{ mb: 1 }} control={<Checkbox checked={apply} onChange={(e) => setApply(e.target.checked)} />}
+                label={`Set the port call ${decision.r.report_type === 'arrival' ? 'ATA' : 'ATD'} from this report`} />
+            )}
+            <TextField label={decision?.kind === 'reject' ? 'Reason' : 'Comment (optional)'} required={decision?.kind === 'reject'} multiline minRows={2} value={text} onChange={(e) => setText(e.target.value)} />
+          </FormSection></FormLayout>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDecision(null)}>Cancel</Button>
+          <Button variant="outlined" onClick={() => setDecision(null)}>Cancel</Button>
           <LoadingButton variant="contained" color={decision?.kind === 'verify' ? 'success' : 'error'} loading={act.isPending}
             disabled={decision?.kind === 'reject' && text.trim().length < 3} onClick={() => decision && act.mutate({ r: decision.r, kind: decision.kind })}>Confirm</LoadingButton>
         </DialogActions>

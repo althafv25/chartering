@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, Stack, Switch, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, DialogActions, DialogContent, FormControlLabel, Grid, Stack, Switch, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import { contractsApi } from '../../api/contracts';
 import { errorMessage } from '../../api/client';

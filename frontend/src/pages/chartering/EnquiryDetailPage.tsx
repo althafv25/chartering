@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, MenuItem, Stack, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, DialogActions, DialogContent, IconButton, MenuItem, Stack, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';

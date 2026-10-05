@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, Tab, Table, TableBody,
+  Alert, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, Grid, MenuItem, Stack, Tab, Table, TableBody,
   TableCell, TableHead, TableRow, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import CallMadeIcon from '@mui/icons-material/CallMade';
 import CallReceivedIcon from '@mui/icons-material/CallReceived';

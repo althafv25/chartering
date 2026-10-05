@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, Divider, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import { offshoreActivitiesApi, offshoreProjectsApi } from '../../api/offshore';

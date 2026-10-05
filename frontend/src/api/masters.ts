@@ -39,7 +39,7 @@ export const fxApi = {
 
 export const companiesApi = {
   list: (params: ListParams) => page<Company>(api.get('/companies', { params })),
-  lookup: (search: string, role?: string) => data<CompanyRef[]>(api.get('/companies/lookup', { params: { search, role } })),
+  lookup: (search: string, role?: string | string[]) => data<CompanyRef[]>(api.get('/companies/lookup', { params: { search, role } })),
   get: (id: number) => data<Company>(api.get(`/companies/${id}`)),
   create: (body: Body) => env<Company>(api.post('/companies', body)),
   update: (id: number, body: Body) => env<Company>(api.put(`/companies/${id}`, body)),

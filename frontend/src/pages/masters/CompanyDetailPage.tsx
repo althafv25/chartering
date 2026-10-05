@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, IconButton, MenuItem, Stack, Switch, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, FormControlLabel, Grid, IconButton, MenuItem, Stack, Switch, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
@@ -23,7 +24,7 @@ import { countryName } from '../../constants/countries';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDate, humanize } from '../../utils/format';
 import type { BankAccount, Contact } from '../../types/masters';
-import { CompanyDialog } from './CompanyDialog';
+import { CompanyDrawer } from './CompanyDrawer';
 
 type ContactForm = Omit<Contact, 'id' | 'company_id' | 'full_name'>;
 const emptyContact: ContactForm = { first_name: '', last_name: '', job_title: '', department: '', email: '', phone: '', mobile: '', is_primary: false, remarks: '' };
@@ -104,7 +105,7 @@ export default function CompanyDetailPage() {
       <PageHeader
         title={c.legal_name}
         subtitle={`${c.code}${c.trading_name ? ` · trading as ${c.trading_name}` : ''}`}
-        breadcrumbs={[{ label: 'Masters' }, { label: 'Address book', to: '/masters/companies' }, { label: c.legal_name }]}
+        breadcrumbs={[{ label: 'Masters' }, { label: 'Companies', to: '/masters/companies' }, { label: c.legal_name }]}
         actions={<>
           {can(P.CompaniesDelete) && <Button color="error" onClick={() => setConfirm({ title: 'Delete company', message: `Delete ${c.legal_name}? Existing references are kept.`, run: async () => { await companiesApi.remove(id); navigate('/masters/companies'); } })}>Delete</Button>}
           {canEdit && <Button variant="contained" startIcon={<EditOutlined />} onClick={() => setEditOpen(true)}>Edit</Button>}
@@ -169,7 +170,7 @@ export default function CompanyDetailPage() {
         {tab === 'documents' && <DocumentsPanel parentType="companies" parentId={id} canEdit={canEdit} />}
       </Card>
 
-      <CompanyDialog open={editOpen} company={c} onClose={() => setEditOpen(false)} />
+      <CompanyDrawer open={editOpen} company={c} onClose={() => setEditOpen(false)} />
 
       <Dialog open={contact.open} onClose={() => setContact({ open: false, form: emptyContact })} maxWidth="sm" fullWidth>
         <DialogTitle>{contact.id ? 'Edit contact' : 'Add contact'}</DialogTitle>

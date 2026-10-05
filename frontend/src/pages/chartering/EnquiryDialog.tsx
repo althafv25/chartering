@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import ArrowUpward from '@mui/icons-material/ArrowUpward';
@@ -81,7 +82,7 @@ export function EnquiryDialog({ open, enquiry, onClose, onSaved }: { open: boole
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}><CurrencySelect label="Currency" value={(f.currency as string) ?? null} onChange={(v) => set('currency', v)} error={errors.currency?.[0]} /></Grid>
           <Grid size={{ xs: 12, md: 6 }}>
-            <CompanyAutocomplete label="Charterer / customer" role="charterer" value={(f.charterer_company_id as number) || null}
+            <CompanyAutocomplete label="Charterer / customer" role={['charterer', 'customer']} value={(f.charterer_company_id as number) || null}
               initial={enquiry?.charterer ?? null} onChange={(id) => set('charterer_company_id', id)} error={errors.charterer_company_id?.[0]} />
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>

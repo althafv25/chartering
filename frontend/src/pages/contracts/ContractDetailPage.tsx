@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, AlertTitle, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, Tab, Table, TableBody,
+  Alert, AlertTitle, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, Grid, MenuItem, Stack, Tab, Table, TableBody,
   TableCell, TableHead, TableRow, Tabs, TextField, Typography,
 } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import { contractsApi } from '../../api/contracts';
 import { ApiError } from '../../api/client';

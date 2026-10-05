@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, DialogActions, DialogContent, Grid, MenuItem, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import { voyageExpensesApi, voyageRevenuesApi } from '../../api/finance';
 import { errorMessage } from '../../api/client';

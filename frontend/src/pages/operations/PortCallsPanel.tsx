@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow,
+  Alert, Box, Button, DialogActions, DialogContent, Grid, IconButton, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow,
   TextField, Tooltip, Typography,
 } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import BlockOutlined from '@mui/icons-material/BlockOutlined';

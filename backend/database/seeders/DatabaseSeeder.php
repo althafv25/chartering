@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             DocumentTypeSeeder::class,
             ReferenceDataSeeder::class,
             AdminUserSeeder::class,
+            InitialDemoDataSeeder::class,
         ]);
     }
 }

@@ -14,6 +14,10 @@ This is a maritime shipping company management platform. It helps companies:
 
 **Real example:** Client calls → We quote $300k for a ship → Ship sails → We invoice $300k → Client pays → We report profit.
 
+## Initial Data and the Complete Workflow
+
+Read **[DATA-FLOW-GUIDE.md](DATA-FLOW-GUIDE.md)** to follow the seeded demo records and understand each screen/action from enquiry to final settlement. Use **[DATA-FLOW-REFERENCE.md](DATA-FLOW-REFERENCE.md)** for record links, snapshots, and API examples where the current finance forms do not expose relationship fields.
+
 ---
 
 ## Your Learning Path (Choose One)
@@ -90,8 +94,11 @@ cd ../frontend && npm install
 
 **The Business Flow:**
 ```
-ENQUIRY → ESTIMATION → OFFER → CONTRACT → VOYAGE → INVOICE → PAYMENT
-(Request) (Cost calc) (Quote) (Sign)      (Sail)   (Bill)     (Paid)
+ENQUIRY → ESTIMATION → OFFER → FIXTURE
+                                  ├─ CONTRACT
+                                  └─ VOYAGE → OPERATIONS → ACTUAL REVENUE / EXPENSES
+                                                              ├─ INVOICE → RECEIPT
+                                                              └─ PAYABLE → PAYMENT
 ```
 
 **The Architecture:**

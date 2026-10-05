@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, Paper, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Checkbox, DialogActions, DialogContent, FormControlLabel, Grid, Paper, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import { rolesApi } from '../../api/endpoints';
 import { LoadingButton } from '../../components/LoadingButton';
 import { SectionLoader } from '../../components/Feedback';

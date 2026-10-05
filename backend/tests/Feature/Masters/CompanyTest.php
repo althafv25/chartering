@@ -83,9 +83,12 @@ class CompanyTest extends MastersTestCase
     public function test_permissions_and_lookup(): void
     {
         $this->company(['charterer'], ['legal_name' => 'Aramco Offshore', 'normalized_name' => 'aramco offshore']);
+        $this->company(['customer'], ['legal_name' => 'Customer Marine', 'normalized_name' => 'customer marine']);
 
         $this->actingAsRole(UserRole::ReadOnly);
         $this->getJson('/api/v1/companies/lookup?search=Aram&role=charterer')->assertOk()->assertJsonPath('data.0.legal_name', 'Aramco Offshore');
+        $this->getJson('/api/v1/companies/lookup?search=Customer&role[]=charterer&role[]=customer')
+            ->assertOk()->assertJsonPath('data.0.legal_name', 'Customer Marine');
         $this->postJson('/api/v1/companies', ['legal_name' => 'X', 'roles' => ['owner']])->assertForbidden();
     }
 }

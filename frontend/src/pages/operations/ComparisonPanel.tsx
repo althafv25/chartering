@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import CameraAltOutlined from '@mui/icons-material/CameraAltOutlined';
 import { voyagesApi } from '../../api/operations';
 import { ErrorState, SectionLoader } from '../../components/Feedback';

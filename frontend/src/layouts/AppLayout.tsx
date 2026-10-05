@@ -8,6 +8,7 @@ import { Sidebar } from './Sidebar';
 import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../auth/useAuth';
 import { initials } from '../utils/format';
+import { surfaceShadows } from '../theme/surfaces';
 
 const DRAWER_WIDTH = 264;
 
@@ -33,8 +34,8 @@ export default function AppLayout() {
         </Drawer>
       </Box>
 
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <AppBar position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+        <AppBar position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 0, bgcolor: 'background.paper', boxShadow: surfaceShadows.header, zIndex: (t) => t.zIndex.appBar }}>
           <Toolbar sx={{ gap: 1 }}>
             {!isDesktop && (
               <IconButton edge="start" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><MenuIcon /></IconButton>
@@ -66,7 +67,7 @@ export default function AppLayout() {
           </Toolbar>
         </AppBar>
 
-        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, maxWidth: 1600, width: '100%', mx: 'auto' }}>
+        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 3 }, maxWidth: 1600, width: '100%', mx: 'auto', bgcolor: 'background.default' }}>
           <Outlet />
         </Box>
       </Box>

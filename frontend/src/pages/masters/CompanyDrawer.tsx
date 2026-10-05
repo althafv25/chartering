@@ -3,7 +3,8 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, AlertTitle, Autocomplete, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Grid, MenuItem, Switch, TextField } from '@mui/material';
+import { Alert, AlertTitle, Autocomplete, Button, Chip, DialogActions, DialogContent, FormControlLabel, Grid, MenuItem, Switch, TextField } from '@mui/material';
+import { DrawerDialog, DrawerDialogTitle } from '../../components/DrawerDialog';
 import { companiesApi } from '../../api/masters';
 import { ApiError } from '../../api/client';
 import { LoadingButton } from '../../components/LoadingButton';
@@ -49,7 +50,7 @@ const toForm = (c: Company | null): Form => ({
 /** Empty strings → null so optional fields can be cleared. */
 const toPayload = (v: Form) => Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x === '' ? null : x]));
 
-export function CompanyDialog({ open, company, defaultRole, onClose, onSaved }: {
+export function CompanyDrawer({ open, company, defaultRole, onClose, onSaved }: {
   open: boolean;
   company: Company | null;
   defaultRole?: string;
@@ -91,20 +92,20 @@ export function CompanyDialog({ open, company, defaultRole, onClose, onSaved }: 
   const submit = (confirm: boolean) => handleSubmit((values) => save.mutate({ values, confirm }));
 
   return (
-    <Dialog open={open} onClose={save.isPending ? undefined : onClose} maxWidth="md" fullWidth>
+    <DrawerDialog open={open} onClose={save.isPending ? undefined : onClose} width={720} closeLabel="Close company form">
       <form onSubmit={submit(false)} noValidate>
-        <DialogTitle>{company ? `Edit ${company.legal_name}` : 'New company'}</DialogTitle>
-        <DialogContent dividers>
+        <DrawerDialogTitle>{company ? `Edit ${company.legal_name}` : 'Add company'}</DrawerDialogTitle>
+        <DialogContent>
           {duplicates && (
-            <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={submit(true)}>Save anyway</Button>}>
+            <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" size="small" disabled={save.isPending} onClick={submit(true)}>Save anyway</Button>}>
               <AlertTitle>Possible duplicate</AlertTitle>
               {duplicates.map((d) => <div key={d}>{d}</div>)}
             </Alert>
           )}
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 7 }}><TextField label="Legal name" required {...register('legal_name')} error={!!errors.legal_name} helperText={errors.legal_name?.message} /></Grid>
-            <Grid size={{ xs: 12, md: 5 }}><TextField label="Trading name" {...register('trading_name')} /></Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Legal name" required autoFocus {...register('legal_name')} error={!!errors.legal_name} helperText={errors.legal_name?.message} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Trading name" {...register('trading_name')} /></Grid>
+            <Grid size={{ xs: 12, sm: 8 }}>
               <Controller control={control} name="roles" render={({ field }) => (
                 <Autocomplete multiple size="small" options={[...COMPANY_ROLES]} value={field.value ?? []} onChange={(_, v) => field.onChange(v)}
                   getOptionLabel={humanize}
@@ -112,42 +113,42 @@ export function CompanyDialog({ open, company, defaultRole, onClose, onSaved }: 
                   renderInput={(p) => <TextField {...p} label="Roles" required error={!!errors.roles} helperText={errors.roles?.message ?? 'Owner, charterer, broker, agent, supplier…'} />} />
               )} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Controller control={control} name="status" render={({ field }) => (
                 <TextField select label="Status" value={field.value ?? 'active'} onChange={field.onChange}>
                   <MenuItem value="active">Active</MenuItem><MenuItem value="inactive">Inactive</MenuItem><MenuItem value="blocked">Blocked</MenuItem>
                 </TextField>
               )} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Controller control={control} name="country" render={({ field }) => <CountrySelect label="Country" value={field.value} onChange={field.onChange} error={errors.country?.message} />} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="City" {...register('city')} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="Postal code" {...register('postal_code')} /></Grid>
-            <Grid size={{ xs: 12, md: 6 }}><TextField label="Address line 1" {...register('address_line1')} /></Grid>
-            <Grid size={{ xs: 12, md: 6 }}><TextField label="Address line 2" {...register('address_line2')} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="Email" type="email" {...register('email')} error={!!errors.email} helperText={errors.email?.message} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="Phone" {...register('phone')} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="Website" {...register('website')} error={!!errors.website} helperText={errors.website?.message} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="VAT / tax number" {...register('tax_number')} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField label="City" {...register('city')} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField label="Postal code" {...register('postal_code')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Address line 1" {...register('address_line1')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Address line 2" {...register('address_line2')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Email" type="email" {...register('email')} error={!!errors.email} helperText={errors.email?.message} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Phone" {...register('phone')} /></Grid>
+            <Grid size={12}><TextField label="Website" {...register('website')} error={!!errors.website} helperText={errors.website?.message} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="VAT / tax number" {...register('tax_number')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Controller control={control} name="default_currency" render={({ field }) => <CurrencySelect label="Default currency" value={field.value} onChange={field.onChange} />} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={12}>
               <Controller control={control} name="vat_registered" render={({ field }) => (
                 <FormControlLabel control={<Switch checked={!!field.value} onChange={(e) => field.onChange(e.target.checked)} />} label="VAT registered" />
               )} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="Payment terms (days)" inputMode="numeric" {...register('payment_terms_days')} error={!!errors.payment_terms_days} helperText={errors.payment_terms_days?.message} /></Grid>
-            <Grid size={{ xs: 12, md: 4 }}><TextField label="Credit limit" inputMode="decimal" {...register('credit_limit')} error={!!errors.credit_limit} helperText={errors.credit_limit?.message} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Payment terms (days)" inputMode="numeric" {...register('payment_terms_days')} error={!!errors.payment_terms_days} helperText={errors.payment_terms_days?.message} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField label="Credit limit" inputMode="decimal" {...register('credit_limit')} error={!!errors.credit_limit} helperText={errors.credit_limit?.message} /></Grid>
             <Grid size={12}><TextField label="Remarks" multiline minRows={2} {...register('remarks')} /></Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
+        <DialogActions>
           <Button onClick={onClose} disabled={save.isPending}>Cancel</Button>
           <LoadingButton type="submit" variant="contained" loading={save.isPending}>{company ? 'Save changes' : 'Create company'}</LoadingButton>
         </DialogActions>
       </form>
-    </Dialog>
+    </DrawerDialog>
   );
 }

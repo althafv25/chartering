@@ -31,7 +31,7 @@ export default function FixturesPage() {
   ];
   return (
     <>
-      <PageHeader title="Fixtures" subtitle="Fixed business — recap snapshots of accepted offers" breadcrumbs={[{ label: 'Chartering' }, { label: 'Fixtures' }]} />
+       <PageHeader title="Fixtures" subtitle="Fixed business — recap snapshots of accepted offers" breadcrumbs={[{ label: 'Chartering' }, { label: 'Fixtures' }]} />
       <Card>
         <FilterBar search={search} onSearch={(v) => { setSearch(v); setPage(1); }} placeholder="Search fixture, vessel…" />
         <DataTable columns={columns} rows={list.data?.data ?? []} rowKey={(f) => f.id} loading={list.isFetching} meta={list.data?.meta} onPageChange={setPage}
@@ -40,4 +40,3 @@ export default function FixturesPage() {
     </>
   );
 }
-

@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, IconButton, MenuItem, Stack, TextField } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
+import DirectionsBoatOutlined from '@mui/icons-material/DirectionsBoatOutlined';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
+import RouteOutlined from '@mui/icons-material/RouteOutlined';
+import SpeedOutlined from '@mui/icons-material/SpeedOutlined';
+import LocalGasStationOutlined from '@mui/icons-material/LocalGasStationOutlined';
+import NotesOutlined from '@mui/icons-material/NotesOutlined';
 import { captainReportsApi, voyagesApi } from '../../api/operations';
 import { vesselsApi } from '../../api/masters';
 import { errorMessage } from '../../api/client';
 import { ReferenceSelect } from '../../components/MasterPickers';
 import { LoadingButton } from '../../components/LoadingButton';
+import { FormEmptyState, FormFieldGrid, FormLayout, FormSection } from '../../components/FormSection';
 import { REPORT_TYPES, SHIP_OFFSETS } from '../../constants/operations';
 import { useNotify } from '../../hooks/useNotify';
 import { isDecimal } from '../../utils/decimal';
@@ -79,6 +87,8 @@ export function CaptainReportDialog({ open, onClose, report, vesselId, voyageId 
   const badNumber = (k: string) => f[k] !== '' && f[k] !== undefined && !/^-?\d+(\.\d+)?$/.test(f[k]);
   const linesValid = lines.every((l) => l.fuel_type_id && [l.rob_mt, l.consumed_mt, l.received_mt].every((v) => !v || isDecimal(v, 3)));
   const valid = f.vessel_id && f.reported_at && f.report_type && !NUM_FIELDS.some(([k]) => badNumber(k)) && linesValid;
+  const numberField = ([k, label]: (typeof NUM_FIELDS)[number]) => <TextField key={k} label={label} value={f[k] ?? ''} inputMode="decimal" error={badNumber(k)} onChange={set(k)} />;
+  const textField = ([k, label]: (typeof TEXT_FIELDS)[number]) => <TextField key={k} label={label} value={f[k] ?? ''} onChange={set(k)} />;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -86,63 +96,77 @@ export function CaptainReportDialog({ open, onClose, report, vesselId, voyageId 
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {report?.status === 'rejected' && report.decision_comment && <Alert severity="warning" sx={{ mb: 2 }}>Rejected: {report.decision_comment}</Alert>}
-        <Grid container spacing={2}>
-          {!report && !vesselId && (
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField select label="Vessel" required value={f.vessel_id ?? ''} onChange={(e) => setF((x) => ({ ...x, vessel_id: e.target.value, voyage_id: '', port_call_id: '' }))}>
-                {(vessels.data?.data ?? []).map((v) => <MenuItem key={v.id} value={String(v.id)}>{v.name} ({v.code})</MenuItem>)}
-              </TextField>
-            </Grid>
-          )}
-          {!report && !voyageId && (
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField select label="Voyage (optional)" value={f.voyage_id ?? ''} disabled={!f.vessel_id} onChange={(e) => setF((x) => ({ ...x, voyage_id: e.target.value, port_call_id: '' }))}>
+        <FormLayout>
+          <FormSection title="Vessel & voyage" icon={<DirectionsBoatOutlined />} hint="Link the report to its vessel, voyage, and port call.">
+            <FormFieldGrid columns={3}>
+              {!report && !vesselId ?
+                <TextField select label="Vessel" required value={f.vessel_id ?? ''} onChange={(e) => setF((x) => ({ ...x, vessel_id: e.target.value, voyage_id: '', port_call_id: '' }))}>
+                  {(vessels.data?.data ?? []).map((v) => <MenuItem key={v.id} value={String(v.id)}>{v.name} ({v.code})</MenuItem>)}
+                </TextField>
+                : <TextField label="Vessel" value={report?.vessel?.name ?? voyage.data?.vessel?.name ?? `Vessel #${f.vessel_id}`} disabled />}
+              {!report && !voyageId ?
+                <TextField select label="Voyage (optional)" value={f.voyage_id ?? ''} disabled={!f.vessel_id} onChange={(e) => setF((x) => ({ ...x, voyage_id: e.target.value, port_call_id: '' }))}>
+                  <MenuItem value="">—</MenuItem>
+                  {(vesselVoyages.data?.data ?? []).map((v) => <MenuItem key={v.id} value={String(v.id)}>{v.voyage_number}</MenuItem>)}
+                </TextField>
+                : <TextField label="Voyage" value={report?.voyage?.voyage_number ?? voyage.data?.voyage_number ?? (f.voyage_id ? `Voyage #${f.voyage_id}` : 'No voyage')} disabled />}
+              <TextField select label="Port call" value={f.port_call_id ?? ''} disabled={!voyage.data} onChange={set('port_call_id')}>
                 <MenuItem value="">—</MenuItem>
-                {(vesselVoyages.data?.data ?? []).map((v) => <MenuItem key={v.id} value={String(v.id)}>{v.voyage_number}</MenuItem>)}
+                {voyage.data?.port_calls?.filter((c) => c.status !== 'cancelled').map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.sequence}. {c.label}</MenuItem>)}
               </TextField>
-            </Grid>
-          )}
-          <Grid size={{ xs: 6, md: 3 }}>
-            <TextField select label="Type" value={f.report_type ?? 'noon'} onChange={set('report_type')}>
-              {REPORT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 6, md: 4 }}><TextField type="datetime-local" label="Ship's time" required value={f.reported_at ?? ''} onChange={set('reported_at')} slotProps={{ inputLabel: { shrink: true } }} /></Grid>
-          <Grid size={{ xs: 6, md: 2 }}>
-            <TextField select label="UTC offset" value={offset} onChange={(e) => { if (report) setF((x) => ({ ...x, reported_at: fromIso(report.reported_at, e.target.value) })); setOffset(e.target.value); }}>
-              {SHIP_OFFSETS.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 6, md: 3 }}>
-            <TextField select label="Port call" value={f.port_call_id ?? ''} disabled={!voyage.data} onChange={set('port_call_id')}>
-              <MenuItem value="">—</MenuItem>
-              {voyage.data?.port_calls?.filter((c) => c.status !== 'cancelled').map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.sequence}. {c.label}</MenuItem>)}
-            </TextField>
-          </Grid>
-          {NUM_FIELDS.map(([k, label]) => (
-            <Grid key={k} size={{ xs: 6, md: 2.4 }}><TextField label={label} value={f[k] ?? ''} inputMode="decimal" error={badNumber(k)} onChange={set(k)} /></Grid>
-          ))}
-          {TEXT_FIELDS.map(([k, label]) => <Grid key={k} size={{ xs: 6, md: 3 }}><TextField label={label} value={f[k] ?? ''} onChange={set(k)} /></Grid>)}
-          <Grid size={{ xs: 12, md: 6 }}><TextField label="Activity" multiline minRows={2} value={f.activity_text ?? ''} onChange={set('activity_text')} /></Grid>
-          <Grid size={{ xs: 12, md: 6 }}><TextField label="Remarks" multiline minRows={2} value={f.remarks ?? ''} onChange={set('remarks')} /></Grid>
-        </Grid>
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>Fuel (mt)</Typography>
-        <Stack spacing={1}>
-          {lines.map((l, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="center">
-              <Box sx={{ width: 180 }}><ReferenceSelect type="fuel-types" label="Fuel" size="small" required value={l.fuel_type_id || ''} onChange={(v) => setLine(i, { fuel_type_id: v ?? 0 })} /></Box>
-              <TextField size="small" label="ROB" value={l.rob_mt ?? ''} error={!!l.rob_mt && !isDecimal(l.rob_mt, 3)} onChange={(e) => setLine(i, { rob_mt: e.target.value })} />
-              <TextField size="small" label="Consumed" value={l.consumed_mt} error={!!l.consumed_mt && !isDecimal(l.consumed_mt, 3)} onChange={(e) => setLine(i, { consumed_mt: e.target.value })} />
-              <TextField size="small" label="Received" value={l.received_mt} error={!!l.received_mt && !isDecimal(l.received_mt, 3)} onChange={(e) => setLine(i, { received_mt: e.target.value })} />
-              <IconButton size="small" color="error" aria-label="Remove fuel line" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}><DeleteOutline fontSize="small" /></IconButton>
+            </FormFieldGrid>
+          </FormSection>
+          <FormSection title="Report & timing" icon={<AccessTimeOutlined />} hint="Enter ship's time and its UTC offset. The report is stored in UTC.">
+            <FormFieldGrid columns="minmax(0, 1fr) 130px minmax(0, 1.5fr)">
+              <TextField select label="Type" value={f.report_type ?? 'noon'} onChange={set('report_type')}>
+                {REPORT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+              </TextField>
+              <TextField select label="UTC offset" value={offset} onChange={(e) => { if (report) setF((x) => ({ ...x, reported_at: fromIso(report.reported_at, e.target.value) })); setOffset(e.target.value); }}>
+                {SHIP_OFFSETS.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              </TextField>
+              <Box sx={{ gridColumn: '1 / -1', '@container (min-width: 560px)': { gridColumn: 'auto' } }}>
+                <TextField type="datetime-local" label="Ship's time" required value={f.reported_at ?? ''} onChange={set('reported_at')} slotProps={{ inputLabel: { shrink: true } }} />
+              </Box>
+            </FormFieldGrid>
+          </FormSection>
+          <FormSection title="Position & navigation" icon={<RouteOutlined />} hint="Position, course, speed, and distance observations.">
+            <FormFieldGrid columns={3}>{NUM_FIELDS.slice(0, 6).map(numberField)}</FormFieldGrid>
+          </FormSection>
+          <FormSection title="Engine & weather" icon={<SpeedOutlined />} hint="Engine running hours and the conditions during the reporting period.">
+            <FormFieldGrid columns={3}>
+              {NUM_FIELDS.slice(6, 9).map(numberField)}
+              {TEXT_FIELDS.slice(0, 3).map(textField)}
+            </FormFieldGrid>
+          </FormSection>
+          <FormSection title="Fuel (mt)" icon={<LocalGasStationOutlined />} count={lines.length} hint="Remaining on board, consumed, and received quantities by fuel grade."
+            action={<Button size="small" startIcon={<AddIcon />} onClick={() => setLines((ls) => [...ls, { fuel_type_id: 0, rob_mt: '', consumed_mt: '', received_mt: '' }])}>Add fuel</Button>}>
+            <Stack spacing={1.5}>
+              {lines.map((l, i) => (
+                <Box key={i} role="group" aria-label={`Fuel line ${i + 1}`} sx={{ position: 'relative', p: 1.5, pr: 6, border: 1, borderColor: 'divider', borderRadius: 2 }}>
+                  <FormFieldGrid columns={4}>
+                    <ReferenceSelect type="fuel-types" label="Fuel" size="small" required value={l.fuel_type_id || ''} onChange={(v) => setLine(i, { fuel_type_id: v ?? 0 })} />
+                    <TextField size="small" label="ROB" inputMode="decimal" value={l.rob_mt ?? ''} error={!!l.rob_mt && !isDecimal(l.rob_mt, 3)} onChange={(e) => setLine(i, { rob_mt: e.target.value })} />
+                    <TextField size="small" label="Consumed" inputMode="decimal" value={l.consumed_mt} error={!!l.consumed_mt && !isDecimal(l.consumed_mt, 3)} onChange={(e) => setLine(i, { consumed_mt: e.target.value })} />
+                    <TextField size="small" label="Received" inputMode="decimal" value={l.received_mt} error={!!l.received_mt && !isDecimal(l.received_mt, 3)} onChange={(e) => setLine(i, { received_mt: e.target.value })} />
+                  </FormFieldGrid>
+                  <IconButton size="small" color="error" aria-label="Remove fuel line" sx={{ position: 'absolute', top: 15, right: 8 }} onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}><DeleteOutline fontSize="small" /></IconButton>
+                </Box>
+              ))}
+              {lines.length === 0 && <FormEmptyState>No fuel lines yet. Add a fuel to record ROB and consumption.</FormEmptyState>}
             </Stack>
-          ))}
-          <Box><Button size="small" startIcon={<AddIcon />} onClick={() => setLines((ls) => [...ls, { fuel_type_id: 0, rob_mt: '', consumed_mt: '', received_mt: '' }])}>Add fuel</Button></Box>
-        </Stack>
+          </FormSection>
+          <FormSection title="Delays & notes" icon={<NotesOutlined />}>
+            <FormFieldGrid>
+              {numberField(NUM_FIELDS[9])}
+              {textField(TEXT_FIELDS[3])}
+              <TextField label="Activity" multiline minRows={2} value={f.activity_text ?? ''} onChange={set('activity_text')} />
+              <TextField label="Remarks" multiline minRows={2} value={f.remarks ?? ''} onChange={set('remarks')} />
+            </FormFieldGrid>
+          </FormSection>
+        </FormLayout>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="outlined" onClick={onClose}>Cancel</Button>
         <LoadingButton variant="contained" loading={save.isPending} disabled={!valid} onClick={() => save.mutate()}>Save draft</LoadingButton>
       </DialogActions>
     </Dialog>

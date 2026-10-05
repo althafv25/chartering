@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
+import AddIcon from '@mui/icons-material/Add';
+import DirectionsBoatOutlined from '@mui/icons-material/DirectionsBoatOutlined';
+import LocalGasStationOutlined from '@mui/icons-material/LocalGasStationOutlined';
+import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
+import NotesOutlined from '@mui/icons-material/NotesOutlined';
 import { bunkersApi } from '../../api/bunkers';
 import { voyagesApi } from '../../api/operations';
 import { vesselsApi } from '../../api/masters';
@@ -9,6 +15,8 @@ import { DataTable, type Column } from '../../components/DataTable';
 import { ErrorState } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
 import { StatusChip } from '../../components/StatusChip';
+import { FormFieldGrid, FormLayout, FormSection } from '../../components/FormSection';
+import { KeyValueGrid } from '../../components/KeyValueGrid';
 import { CompanyAutocomplete, CurrencySelect, ReferenceSelect } from '../../components/MasterPickers';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
@@ -21,12 +29,13 @@ interface Props {
   filters: Record<string, string | number | undefined>;
   preset?: { vessel_id: number; voyage_id: number };
   readOnly?: boolean;
+  openOrderRequest?: number;
 }
 
 type OrderForm = { vessel_id: string; voyage_id: string; port_call_id: string; supplier_company_id: number | null; fuel_type_id: number | null; ordered_on: string;
   ordered_mt: string; price_per_mt: string; currency: string | null; remarks: string };
 
-export function BunkerStemsTable({ filters, preset, readOnly }: Props) {
+export function BunkerStemsTable({ filters, preset, readOnly, openOrderRequest }: Props) {
   const qc = useQueryClient();
   const notify = useNotify();
   const { can } = useAuth();
@@ -62,6 +71,14 @@ export function BunkerStemsTable({ filters, preset, readOnly }: Props) {
   });
 
   const editable = !readOnly && can(P.BunkersManage);
+  const openOrder = useCallback(() => {
+    setError(null);
+    setOrder({ vessel_id: String(preset?.vessel_id ?? ''), voyage_id: String(preset?.voyage_id ?? ''), port_call_id: '',
+      supplier_company_id: null, fuel_type_id: null, ordered_on: new Date().toISOString().slice(0, 10), ordered_mt: '', price_per_mt: '', currency: 'USD', remarks: '' });
+  }, [preset?.vessel_id, preset?.voyage_id]);
+  useEffect(() => {
+    if (openOrderRequest && editable) openOrder();
+  }, [editable, openOrder, openOrderRequest]);
   const columns: Column<BunkerStem>[] = [
     { key: 'no', header: 'Stem', render: (s) => <Box><Typography fontSize={14} fontWeight={600}>{s.stem_number}</Typography><Typography variant="caption" color="text.secondary">{s.fuel_type?.code} · ordered {formatDate(s.ordered_on)}</Typography></Box> },
     { key: 'where', header: 'Vessel / port', hideBelow: 'md', render: (s) => <Box><Typography fontSize={14}>{s.vessel?.name}</Typography><Typography variant="caption" color="text.secondary">{s.port_call?.label ?? s.port?.name ?? '—'}</Typography></Box> },
@@ -82,81 +99,101 @@ export function BunkerStemsTable({ filters, preset, readOnly }: Props) {
 
   return (
     <>
-      {editable && (
-        <Stack direction="row" justifyContent="flex-end" sx={{ px: 2, pt: 2 }}>
-          <Button variant="outlined" onClick={() => { setError(null); setOrder({ vessel_id: String(preset?.vessel_id ?? ''), voyage_id: String(preset?.voyage_id ?? ''), port_call_id: '',
-            supplier_company_id: null, fuel_type_id: null, ordered_on: new Date().toISOString().slice(0, 10), ordered_mt: '', price_per_mt: '', currency: 'USD', remarks: '' }); }}>Order bunkers</Button>
-        </Stack>
-      )}
+      {preset && editable && <Stack direction="row" justifyContent="flex-end" sx={{ p: 2 }}><Button variant="contained" startIcon={<AddIcon />} onClick={openOrder}>New order</Button></Stack>}
       {list.isError ? <ErrorState error={list.error} onRetry={() => list.refetch()} /> : (
-        <DataTable columns={columns} rows={list.data?.data ?? []} rowKey={(s) => s.id} loading={list.isFetching} meta={list.data?.meta} onPageChange={setPage} emptyTitle="No bunker stems" />
+        <DataTable columns={columns} rows={list.data?.data ?? []} rowKey={(s) => s.id} loading={list.isFetching} meta={list.data?.meta} onPageChange={setPage}
+          emptyTitle="No bunker stems" emptyDescription="Create an order, then record the delivered quantity and bunker delivery note." />
       )}
 
-      <Dialog open={!!order} onClose={() => setOrder(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!order} onClose={() => setOrder(null)} maxWidth="md" fullWidth>
         <DialogTitle>Order bunkers</DialogTitle>
         {order && (
           <DialogContent dividers>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <Grid container spacing={2}>
-              {!preset && (
-                <>
-                  <Grid size={6}>
+            <FormLayout>
+              <FormSection title="Vessel & voyage" icon={<DirectionsBoatOutlined />} hint="Link the order to its vessel, voyage, and port call.">
+                <FormFieldGrid columns={3}>
+                  {!preset ?
                     <TextField select label="Vessel" required value={order.vessel_id} onChange={(e) => setOrder({ ...order, vessel_id: e.target.value, voyage_id: '', port_call_id: '' })}>
                       {(vessels.data?.data ?? []).map((v) => <MenuItem key={v.id} value={String(v.id)}>{v.name}</MenuItem>)}
                     </TextField>
-                  </Grid>
-                  <Grid size={6}>
+                    : <TextField label="Vessel" value={voyage.data?.vessel?.name ?? `Vessel #${preset.vessel_id}`} disabled />}
+                  {!preset ?
                     <TextField select label="Voyage (optional)" value={order.voyage_id} disabled={!order.vessel_id} onChange={(e) => setOrder({ ...order, voyage_id: e.target.value, port_call_id: '' })}>
                       <MenuItem value="">—</MenuItem>{(voyages.data?.data ?? []).map((v) => <MenuItem key={v.id} value={String(v.id)}>{v.voyage_number}</MenuItem>)}
                     </TextField>
-                  </Grid>
-                </>
-              )}
-              <Grid size={6}>
-                <TextField select label="Port call" value={order.port_call_id} disabled={!voyage.data} onChange={(e) => setOrder({ ...order, port_call_id: e.target.value })}>
-                  <MenuItem value="">—</MenuItem>{voyage.data?.port_calls?.filter((c) => c.status !== 'cancelled').map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.sequence}. {c.label}</MenuItem>)}
-                </TextField>
-              </Grid>
-              <Grid size={6}><ReferenceSelect type="fuel-types" label="Fuel" required value={order.fuel_type_id} onChange={(v) => setOrder({ ...order, fuel_type_id: v })} /></Grid>
-              <Grid size={12}><CompanyAutocomplete label="Supplier" role="supplier" value={order.supplier_company_id} onChange={(id) => setOrder({ ...order, supplier_company_id: id })} /></Grid>
-              <Grid size={4}><TextField type="date" label="Ordered on" required value={order.ordered_on} onChange={(e) => setOrder({ ...order, ordered_on: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} /></Grid>
-              <Grid size={4}><TextField label="Quantity (mt)" required value={order.ordered_mt} error={!!order.ordered_mt && !isDecimal(order.ordered_mt, 3)} onChange={(e) => setOrder({ ...order, ordered_mt: e.target.value.trim() })} /></Grid>
-              <Grid size={4}><CurrencySelect label="Currency" required value={order.currency} onChange={(c) => setOrder({ ...order, currency: c })} /></Grid>
-              <Grid size={6}><TextField label="Price per mt" required value={order.price_per_mt} error={!!order.price_per_mt && !isDecimal(order.price_per_mt, 4)} onChange={(e) => setOrder({ ...order, price_per_mt: e.target.value.trim() })} /></Grid>
-              <Grid size={12}><TextField label="Remarks" multiline minRows={2} value={order.remarks} onChange={(e) => setOrder({ ...order, remarks: e.target.value })} /></Grid>
-            </Grid>
+                    : <TextField label="Voyage" value={voyage.data?.voyage_number ?? `Voyage #${preset.voyage_id}`} disabled />}
+                  <TextField select label="Port call" value={order.port_call_id} disabled={!voyage.data} onChange={(e) => setOrder({ ...order, port_call_id: e.target.value })}>
+                    <MenuItem value="">—</MenuItem>{voyage.data?.port_calls?.filter((c) => c.status !== 'cancelled').map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.sequence}. {c.label}</MenuItem>)}
+                  </TextField>
+                </FormFieldGrid>
+              </FormSection>
+              <FormSection title="Fuel & supplier" icon={<LocalGasStationOutlined />} hint="Select the fuel grade and the supplying company.">
+                <FormFieldGrid>
+                  <ReferenceSelect type="fuel-types" label="Fuel" required value={order.fuel_type_id} onChange={(v) => setOrder({ ...order, fuel_type_id: v })} />
+                  <CompanyAutocomplete label="Supplier" role="supplier" value={order.supplier_company_id} onChange={(id) => setOrder({ ...order, supplier_company_id: id })} />
+                </FormFieldGrid>
+              </FormSection>
+              <FormSection title="Order & pricing" icon={<ReceiptLongOutlined />} hint="Order date, quantity, unit price, and currency in one row.">
+                <FormFieldGrid columns={4}>
+                  <TextField type="date" label="Ordered on" required value={order.ordered_on} onChange={(e) => setOrder({ ...order, ordered_on: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+                  <TextField label="Quantity (mt)" required inputMode="decimal" value={order.ordered_mt} error={!!order.ordered_mt && !isDecimal(order.ordered_mt, 3)} onChange={(e) => setOrder({ ...order, ordered_mt: e.target.value.trim() })} />
+                  <TextField label="Price per mt" required inputMode="decimal" value={order.price_per_mt} error={!!order.price_per_mt && !isDecimal(order.price_per_mt, 4)} onChange={(e) => setOrder({ ...order, price_per_mt: e.target.value.trim() })} />
+                  <CurrencySelect compact label="Currency" required value={order.currency} onChange={(c) => setOrder({ ...order, currency: c })} />
+                </FormFieldGrid>
+              </FormSection>
+              <FormSection title="Notes" icon={<NotesOutlined />}>
+                <TextField label="Remarks" multiline minRows={2} value={order.remarks} onChange={(e) => setOrder({ ...order, remarks: e.target.value })} />
+              </FormSection>
+            </FormLayout>
           </DialogContent>
         )}
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setOrder(null)}>Cancel</Button>
+          <Button variant="outlined" onClick={() => setOrder(null)}>Cancel</Button>
           <LoadingButton variant="contained" loading={save.isPending} disabled={!valid} onClick={() => save.mutate()}>Order</LoadingButton>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={!!deliver} onClose={() => setDeliver(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!deliver} onClose={() => setDeliver(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Record delivery · {deliver?.s.stem_number}</DialogTitle>
         {deliver && (
           <DialogContent dividers>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <Stack spacing={2}>
-              <TextField type="datetime-local" label="Delivered (port local time)" required value={deliver.at} onChange={(e) => setDeliver({ ...deliver, at: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
-              <TextField label="Delivered quantity (mt)" required value={deliver.mt} error={!isDecimal(deliver.mt, 3)} onChange={(e) => setDeliver({ ...deliver, mt: e.target.value.trim() })} />
-              <TextField label="BDN number" required value={deliver.bdn} onChange={(e) => setDeliver({ ...deliver, bdn: e.target.value })} />
+            <FormLayout>
+              <FormSection title="Order summary" icon={<ReceiptLongOutlined />} hint={deliver.s.stem_number}>
+                <KeyValueGrid columns={2} items={[
+                  ['Vessel', deliver.s.vessel?.name], ['Fuel', deliver.s.fuel_type?.code],
+                  ['Ordered quantity', `${groupDigits(deliver.s.ordered_mt)} mt`], ['Price per mt', money(deliver.s.price_per_mt, deliver.s.currency)],
+                ]} />
+              </FormSection>
+              <FormSection title="Delivery details" icon={<LocalGasStationOutlined />} hint={`Enter the delivery time in the port timezone (${deliver.s.timezone}).`}>
+                <Stack spacing={1.5}>
+                  <TextField type="datetime-local" label="Delivered (port local time)" required value={deliver.at} onChange={(e) => setDeliver({ ...deliver, at: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+                  <FormFieldGrid>
+                    <TextField label="Delivered quantity (mt)" required inputMode="decimal" value={deliver.mt} error={!isDecimal(deliver.mt, 3)} onChange={(e) => setDeliver({ ...deliver, mt: e.target.value.trim() })} />
+                    <TextField label="BDN number" required value={deliver.bdn} onChange={(e) => setDeliver({ ...deliver, bdn: e.target.value })} />
+                  </FormFieldGrid>
+                </Stack>
+              </FormSection>
               <Typography variant="caption" color="text.secondary">The amount (delivered × price) and the exchange rate to the base currency at delivery are calculated by the server.</Typography>
-            </Stack>
+            </FormLayout>
           </DialogContent>
         )}
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDeliver(null)}>Cancel</Button>
+          <Button variant="outlined" onClick={() => setDeliver(null)}>Cancel</Button>
           <LoadingButton variant="contained" loading={doDeliver.isPending} disabled={!deliver?.at || !deliver.bdn || !isDecimal(deliver.mt, 3)} onClick={() => doDeliver.mutate()}>Save delivery</LoadingButton>
         </DialogActions>
       </Dialog>
 
       <Dialog open={!!cancel} onClose={() => setCancel(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Cancel {cancel?.stem_number}</DialogTitle>
-        <DialogContent dividers><TextField label="Reason" required value={reason} onChange={(e) => setReason(e.target.value)} /></DialogContent>
+        <DialogContent dividers>
+          <FormLayout><FormSection title="Cancellation reason" icon={<NotesOutlined />}>
+            <TextField label="Reason" required multiline minRows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </FormSection></FormLayout>
+        </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setCancel(null)}>Close</Button>
+          <Button variant="outlined" onClick={() => setCancel(null)}>Close</Button>
           <LoadingButton variant="contained" color="error" loading={doCancel.isPending} disabled={reason.trim().length < 3} onClick={() => doCancel.mutate()}>Cancel stem</LoadingButton>
         </DialogActions>
       </Dialog>

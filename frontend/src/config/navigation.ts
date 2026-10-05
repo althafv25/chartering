@@ -55,7 +55,6 @@ export const navigation: NavSection[] = [
   },
   {
     label: 'Fleet', icon: DirectionsBoatOutlined, children: [
-      { label: 'Vessels', to: '/fleet/vessels', permission: P.VesselsView },
       { label: 'Vessel Status', to: '/fleet/status', permission: P.VesselStatusView },
       { label: 'Vessel Performance', to: '/reports/vessel-performance', permission: P.ReportsView },
       { label: 'Fleet Map', to: '/fleet/map', permission: P.AisView, feature: 'ais' },
@@ -74,7 +73,8 @@ export const navigation: NavSection[] = [
   },
   {
     label: 'Masters', icon: StorageOutlined, children: [
-      { label: 'Address Book', to: '/masters/companies', permission: P.CompaniesView },
+      { label: 'Vessels', to: '/fleet/vessels', permission: P.VesselsView },
+      { label: 'Companies', to: '/masters/companies', permission: P.CompaniesView },
       { label: 'Ports & Locations', to: '/masters/ports', permission: P.PortsView },
       { label: 'Distances', to: '/masters/distances', permission: P.DistancesView },
       { label: 'Reference Data', to: '/masters/reference', permission: P.MastersView },

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, AlertTitle, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Stack, Switch,
+  Alert, AlertTitle, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, FormControlLabel, Stack, Switch,
   Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
@@ -30,6 +31,18 @@ import { ScenarioInputsEditor } from './ScenarioInputsEditor';
 import { ScenarioResultsPanel, TraceTable } from './ScenarioResultsPanel';
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+/** Older/imported scenarios may omit optional arrays; keep the editor render-safe. */
+const normalizeScenarioInputs = (inputs?: Partial<ScenarioInputs>): ScenarioInputs => ({
+  sea_margin_pct: inputs?.sea_margin_pct ?? '0',
+  eca_fuel_type_id: inputs?.eca_fuel_type_id ?? null,
+  legs: Array.isArray(inputs?.legs) ? inputs.legs : [],
+  calls: Array.isArray(inputs?.calls) ? inputs.calls : [],
+  consumption: Array.isArray(inputs?.consumption) ? inputs.consumption : [],
+  fuel_prices: Array.isArray(inputs?.fuel_prices) ? inputs.fuel_prices : [],
+  revenue_items: Array.isArray(inputs?.revenue_items) ? inputs.revenue_items : [],
+  cost_items: Array.isArray(inputs?.cost_items) ? inputs.cost_items : [],
+});
 
 export default function EstimationDetailPage() {
   const id = Number(useParams().id);
@@ -173,7 +186,7 @@ function ScenarioWorkspace({ estimation, scenarioId, onChanged, onCreated }: { e
   const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
-    if (scenario.data?.inputs) { setDraft(clone(scenario.data.inputs)); setName(scenario.data.name); setConflict(false); }
+    if (scenario.data) { setDraft(normalizeScenarioInputs(clone(scenario.data.inputs))); setName(scenario.data.name); setConflict(false); }
   }, [scenario.data]);
 
   const readOnly = !estimation.is_editable || !can(P.EstimationsUpdate);
@@ -208,14 +221,14 @@ function ScenarioWorkspace({ estimation, scenarioId, onChanged, onCreated }: { e
   const patch = (fn: (d: ScenarioInputs) => void) => setDraft((d) => { const n = clone(d!); fn(n); return n; });
 
   return (
-    <CardContent>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ md: 'center' }} sx={{ mb: 2 }}>
+    <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } } }}>
+      <Stack direction={{ xs: 'column', xl: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xl: 'center' }} sx={{ mb: 2, p: 1.5, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover' }}>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <TextField size="small" label="Scenario name" value={name} disabled={readOnly} onChange={(ev) => setName(ev.target.value)} sx={{ minWidth: 240 }} />
+          <TextField size="small" label="Scenario name" value={name} disabled={readOnly} onChange={(ev) => setName(ev.target.value)} sx={{ width: { xs: '100%', sm: 280 }, maxWidth: '100%' }} />
           <StatusChip status={s.calc_status} />
           {s.is_selected && <Chip size="small" color="success" icon={<CheckCircleOutline />} label="Selected" />}
           {s.cloned_from_id && <Chip size="small" variant="outlined" label={`Cloned from #${s.cloned_from_id}`} />}
-          {dirty && <Chip size="small" color="warning" label="Unsaved changes" />}
+          {dirty && !readOnly && <Chip size="small" color="warning" label="Unsaved changes" />}
         </Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           {!readOnly && <LoadingButton variant="contained" startIcon={<SaveIcon />} loading={save.isPending} disabled={!dirty} onClick={() => save.mutate()}>Save & calculate</LoadingButton>}
@@ -308,4 +321,3 @@ function CompareView({ estimation }: { estimation: Estimation }) {
     </Box>
   );
 }
-

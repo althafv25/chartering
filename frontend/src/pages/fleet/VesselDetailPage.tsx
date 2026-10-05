@@ -73,7 +73,7 @@ export default function VesselDetailPage() {
       <PageHeader
         title={v.name}
         subtitle={[v.code, v.imo_number && `IMO ${v.imo_number}`, v.vessel_type?.name, v.flag_country && `${countryName(v.flag_country)} flag`].filter(Boolean).join(' · ')}
-        breadcrumbs={[{ label: 'Fleet' }, { label: 'Vessels', to: '/fleet/vessels' }, { label: v.name }]}
+        breadcrumbs={[{ label: 'Masters' }, { label: 'Vessels', to: '/fleet/vessels' }, { label: v.name }]}
         actions={<>
           {can(P.VesselsDelete) && <Button color="error" onClick={() => setConfirmDelete(true)}>Delete</Button>}
           {can(P.VesselStatusUpdate) && <Button variant="outlined" onClick={() => setStatusOpen(true)}>Update status</Button>}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
+import { Alert, Button, DialogActions, DialogContent, MenuItem, Stack, TextField } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import { estimationsApi } from '../../api/chartering';
 import { vesselsApi } from '../../api/masters';
 import { errorMessage } from '../../api/client';

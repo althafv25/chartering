@@ -4,6 +4,8 @@ Complete documentation for the Offshore Chartering & Vessel Operations system.
 
 ## Essential Reading (Start Here)
 
+- **[DATA-FLOW-GUIDE.md](DATA-FLOW-GUIDE.md)** — Start-to-finish user workflow, seeded demo records, screen actions, approvals, operations, billing, and settlement.
+- **[DATA-FLOW-REFERENCE.md](DATA-FLOW-REFERENCE.md)** — Data relationships, snapshots, API handoffs, linked-finance examples, and implementation references.
 - **[01-PRODUCT-REQUIREMENTS.md](01-PRODUCT-REQUIREMENTS.md)** — What the system does. Feature list, user roles, scope.
 - **[02-SYSTEM-ARCHITECTURE.md](02-SYSTEM-ARCHITECTURE.md)** — How it's built. Tech stack, constraints, deployment model.
 - **[14-FINAL-STATUS.md](14-FINAL-STATUS.md)** — Phase 14 completion status. Test results, known limits, what's blocked.

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, DialogActions, DialogContent, Grid, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from './DrawerDialog';
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';

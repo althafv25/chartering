@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, AlertTitle, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Alert, AlertTitle, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import { fixturesApi } from '../../api/chartering';
 import { fixtureLifecycleApi } from '../../api/contracts';

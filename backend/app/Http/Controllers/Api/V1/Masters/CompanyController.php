@@ -43,7 +43,11 @@ class CompanyController extends Controller
     public function lookup(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Company::class);
-        $f = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'role' => ['nullable', Rule::in(CompanyRole::values())]]);
+        $role = $request->input('role');
+        if ($role !== null && ! is_array($role)) {
+            $request->merge(['role' => [$role]]);
+        }
+        $f = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'role' => ['nullable', 'array', 'max:10'], 'role.*' => ['string', Rule::in(CompanyRole::values())]]);
 
         return $this->ok(CompanyRefResource::collection($this->companies->lookup((string) ($f['search'] ?? ''), $f['role'] ?? null)));
     }
