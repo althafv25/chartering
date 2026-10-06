@@ -157,6 +157,10 @@ All paths below are relative to `/api/v1` and require the appropriate authentica
 | Fixture workflow | `POST /fixtures/{fixture}/submit`, `/approve`, `/reject`, `/fail`, `/cancel` |
 | Create contract/voyage from fixture | `POST /fixtures/{fixture}/convert-to-contract` / `/convert-to-voyage` |
 | Contract workflow | `POST /contracts/{contract}/submit`, `/approve`, `/activate`, `/complete` |
+| Generate estimation PDF | `POST /estimations/{estimation}/scenarios/{scenario}/pdf` |
+| Generate offer revision PDF | `POST /offers/{offer}/revisions/{revision}/pdf` |
+| Generate fixture recap / contract PDF | `POST /fixtures/{fixture}/pdf` / `POST /contracts/{contract}/pdf` |
+| Download generated document | `GET /documents/{document}/download` |
 | Direct voyage | `POST /estimations/{estimation}/convert-to-voyage` |
 | Add/edit call | `POST /voyages/{voyage}/port-calls` / `PUT /voyages/{voyage}/port-calls/{portCall}` |
 | Voyage status and closure | `POST /voyages/{voyage}/transition`, `/complete`, `/finalize`, `/reopen`, `/cancel` |
@@ -171,6 +175,8 @@ All paths below are relative to `/api/v1` and require the appropriate authentica
 | Aging / balancing | `GET /receivables/aging`; `GET /balancing/accounts`; `GET /balancing/cash-flow` |
 
 Many update requests require the current `lock_version`, obtained from the last read. On a stale-record error, reload before applying edits.
+
+PDF generation returns a `201` document envelope and stores a private, immutable file snapshot in the existing document register. Generation requires `documents.view`, `documents.upload`, and the parent's view/update permissions. Contract PDF generation and download additionally require `contracts.rates.view`. PDFs use company identity from Settings; their filenames identify the scenario, offer revision, fixture, or current contract version. Generation does not send email or change workflow status. Implementation: `CommercialPdfController`, `CommercialPdfService`, `DocumentService::storeGeneratedPdf`, and `resources/views/commercial/document-pdf.blade.php`.
 
 ## 5. Linked-finance example
 

@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { KeyValueGrid } from '../../components/KeyValueGrid';
 import { StatusChip } from '../../components/StatusChip';
 import { DocumentsPanel } from '../../components/DocumentsPanel';
+import { PdfDocumentButton } from '../../components/PdfDocumentButton';
 import { ActivityPanel } from '../../components/ActivityPanel';
 import { ErrorState, SectionLoader } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
@@ -71,6 +72,7 @@ export default function FixtureDetailPage() {
       <PageHeader title={f.fixture_number} subtitle={[f.vessel?.name, f.charterer?.legal_name, labelOf(BUSINESS_TYPES, f.business_type)].filter(Boolean).join(' · ')}
         breadcrumbs={[{ label: 'Chartering' }, { label: 'Fixtures', to: '/chartering/fixtures' }, { label: f.fixture_number }]}
         actions={<>
+          <PdfDocumentButton parentType="fixtures" parentId={id} permission={P.FixturesUpdate} generate={() => fixturesApi.generatePdf(id)} />
           {f.status === 'draft' && can(P.FixturesUpdate) && <Button onClick={() => setEdit({ terms: f.terms ?? '', remarks: f.remarks ?? '', cargo_description: f.cargo_description ?? '' })}>Edit</Button>}
           {f.status === 'draft' && can(P.FixturesSubmit) && <Button variant="contained" onClick={() => setAction('submit')}>Submit for approval</Button>}
           {f.status === 'submitted' && can(P.FixturesApprove) && <Button color="error" onClick={() => setAction('reject')}>Return to draft</Button>}

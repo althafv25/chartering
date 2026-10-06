@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\Chartering\EstimationController;
 use App\Http\Controllers\Api\V1\Chartering\FixtureController;
 use App\Http\Controllers\Api\V1\Chartering\OfferController;
 use App\Http\Controllers\Api\V1\Chartering\ScenarioController;
+use App\Http\Controllers\Api\V1\CommercialPdfController;
 use App\Http\Controllers\Api\V1\Contracts\AmendmentController;
 use App\Http\Controllers\Api\V1\Contracts\ContractController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -124,6 +125,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     }
     Route::get('offers/{offer}/revisions/{revision}/diff/{other}', [OfferController::class, 'diff']);
     Route::post('offers/{offer}/revisions/{revision}/convert-to-fixture', [OfferController::class, 'createFixture']);
+    Route::post('offers/{offer}/revisions/{revision}/pdf', [CommercialPdfController::class, 'offer'])->middleware('throttle:exports');
 
     Route::apiResource('estimations', EstimationController::class)->except(['destroy']);
     Route::post('estimations/{estimation}/submit', [EstimationController::class, 'submit']);
@@ -140,12 +142,14 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::post('estimations/{estimation}/scenarios/{scenario}/calculate', [ScenarioController::class, 'calculate']);
     Route::post('estimations/{estimation}/scenarios/{scenario}/refresh-defaults', [ScenarioController::class, 'refreshDefaults']);
     Route::post('estimations/{estimation}/scenarios/{scenario}/select', [ScenarioController::class, 'select']);
+    Route::post('estimations/{estimation}/scenarios/{scenario}/pdf', [CommercialPdfController::class, 'estimation'])->middleware('throttle:exports');
 
     Route::apiResource('fixtures', FixtureController::class)->only(['index', 'show', 'update']);
     Route::post('fixtures/{fixture}/{action}', [FixtureController::class, 'transition'])->whereIn('action', ['submit', 'approve', 'cancel', 'fail', 'reject']);
     Route::get('fixtures/{fixture}/activity', [FixtureController::class, 'fixtureActivity']);
     Route::post('fixtures/{fixture}/convert-to-contract', [FixtureController::class, 'toContract']);
     Route::post('fixtures/{fixture}/convert-to-voyage', [FixtureController::class, 'toVoyage']);
+    Route::post('fixtures/{fixture}/pdf', [CommercialPdfController::class, 'fixture'])->middleware('throttle:exports');
 
     // ===== CONTRACTS ROUTES =====
     Route::apiResource('contracts', ContractController::class)->except(['destroy']);
@@ -159,6 +163,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::put('contracts/{contract}/clauses', [ContractController::class, 'clauses']);
     Route::get('contracts/{contract}/effective-rates', [ContractController::class, 'effectiveRates']);
     Route::get('contracts/{contract}/activity', [ContractController::class, 'history']);
+    Route::post('contracts/{contract}/pdf', [CommercialPdfController::class, 'contract'])->middleware('throttle:exports');
 
     Route::post('contracts/{contract}/amendments', [AmendmentController::class, 'store']);
     Route::put('contracts/{contract}/amendments/{amendment}', [AmendmentController::class, 'update']);

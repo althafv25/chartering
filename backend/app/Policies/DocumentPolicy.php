@@ -31,7 +31,10 @@ class DocumentPolicy
     public function view(User $actor, Document $document): bool
     {
         return $actor->hasPermissionTo(Permission::DocumentsView->value)
-            && $actor->can($this->documents->parentPermission($document->documentable_type, 'view'));
+            && $actor->can($this->documents->parentPermission($document->documentable_type, 'view'))
+            && ($document->documentable_type !== 'contracts'
+                || ! $document->documentType()->where('code', 'contract_pdf')->exists()
+                || $actor->can(Permission::ContractsRatesView->value));
     }
 
     public function delete(User $actor, Document $document): bool

@@ -167,6 +167,8 @@ Open the saved enquiry and use **Vessels** to add candidates to the shortlist.
 - Check the revenue basis: a lump-sum enquiry does not automatically fill a per-tonne default revenue row.
 - Avoid counting the same fuel or port cost both in calculated fuel/call costs and in additional cost items.
 
+**Estimation PDF:** In the scenario toolbar, click **Generate PDF** to preview and download an internal estimation report. It contains the saved scenario's assumptions and current calculated summary, including profit and TCE. An incomplete scenario is identified explicitly and has no calculated financial summary. Save your edits before generating the report. The PDF is archived under the estimation's **Documents** tab.
+
 ### Step 3 — Create and negotiate the offer
 
 **Screen:** Open the approved, enquiry-linked estimation → **Create offer**.
@@ -182,6 +184,8 @@ Open the saved enquiry and use **Vessels** to add candidates to the shortlist.
 **Passed forward:** The accepted revision becomes the commercial basis for the fixture.
 
 **Important:** **Mark sent** records the workflow state. It is not an automatic customer-email action. Offers are created from the estimation detail workflow; the Offers listing has no standalone New offer form.
+
+**Offer PDF:** Each revision has **Generate PDF**. The output identifies the offer number and revision, and includes the vessel, parties, price, quantity/period, itinerary, validity, commissions, and terms. Preview it, use **Download PDF**, and send the file using your email client. A saved copy is attached to the offer's **Documents** tab. Generating a PDF leaves the negotiation status unchanged.
 
 ### Step 4 — Create and approve the fixture
 
@@ -200,6 +204,8 @@ Open the saved enquiry and use **Vessels** to add candidates to the shortlist.
 
 **Passed forward:** An approved fixture can create a draft contract and a draft voyage. The Fixtures listing has no standalone New fixture form.
 
+**Fixture PDF:** Use **Generate PDF** at the top of the fixture to produce a customer-facing recap of the agreed commercial terms. Internal estimation profit, TCE, calculation inputs, and internal remarks are omitted. The saved recap is available in **Documents**.
+
 ### Step 5 — Formalize the contract
 
 **Screen:** Open the approved fixture → **Create contract**.
@@ -213,6 +219,8 @@ Open the saved enquiry and use **Vessels** to add candidates to the shortlist.
 **Stored:** Contract header, rate schedule, clauses, approved version snapshots, and amendments.
 
 **Passed forward:** The voyage can link the contract; offshore activities can use its effective rate schedule. An active contract can be completed separately after the work.
+
+**Contract PDF:** Click **Generate PDF** at the top of the contract to preview/download its current version, including the approved header, that version's rates and clauses, payment terms, and signature spaces. Save draft edits first. The file is archived in **Documents** with a versioned filename. Company identity comes from **Administration → Settings → Company**. Generating or downloading a contract PDF requires contract rate-view permission in addition to document and contract access.
 
 ### Step 6 — Create and plan the voyage
 

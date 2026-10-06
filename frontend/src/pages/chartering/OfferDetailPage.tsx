@@ -18,6 +18,7 @@ import { LoadingButton } from '../../components/LoadingButton';
 import { StatusChip } from '../../components/StatusChip';
 import { ActivityPanel } from '../../components/ActivityPanel';
 import { DocumentsPanel } from '../../components/DocumentsPanel';
+import { PdfDocumentButton } from '../../components/PdfDocumentButton';
 import { CurrencySelect } from '../../components/MasterPickers';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
@@ -135,6 +136,7 @@ export default function OfferDetailPage() {
                         {r.fixture && <Chip size="small" color="success" label={`Fixture ${r.fixture.fixture_number}`} onClick={() => navigate(`/chartering/fixtures/${r.fixture!.id}`)} />}
                       </Stack>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        <PdfDocumentButton size="small" parentType="offers" parentId={id} permission={P.OffersUpdate} generate={() => offersApi.generatePdf(id, r.id)} />
                         {idx < revisions.length - 1 && <Button size="small" startIcon={<CompareArrowsIcon />} onClick={() => setCmp([revisions[idx + 1].id, r.id])}>Compare with rev {revisions[idx + 1].revision_no}</Button>}
                         {r.status === 'draft' && can(P.OffersUpdate) && <Button size="small" onClick={() => setEditor({ mode: 'edit', rev: r, terms: fromRevision(r, r.direction) })}>Edit draft</Button>}
                         {r.status === 'draft' && r.direction === 'outbound' && can(P.OffersSend) && <Button size="small" variant="contained" onClick={() => act.mutate({ kind: 'send', rev: r })}>Mark sent</Button>}

@@ -1,6 +1,7 @@
 import { api } from './client';
 import type { ApiEnvelope, ListParams, Paginated } from '../types/api';
 import type { ActivityEntry, CompareRow, Enquiry, Estimation, Fixture, Offer, OfferRevision, Scenario, ScenarioInputs, Voyage } from '../types/chartering';
+import type { DocumentItem } from '../types/masters';
 
 type Body = Record<string, unknown>;
 const data = <T>(p: Promise<{ data: ApiEnvelope<T> }>) => p.then((r) => r.data.data);
@@ -38,6 +39,7 @@ export const estimationsApi = {
     env<Scenario>(api.put(`/estimations/${id}/scenarios/${sid}`, body)),
   calculate: (id: number, sid: number) => env<Scenario>(api.post(`/estimations/${id}/scenarios/${sid}/calculate`)),
   select: (id: number, sid: number) => env<Scenario>(api.post(`/estimations/${id}/scenarios/${sid}/select`)),
+  generatePdf: (id: number, sid: number) => env<DocumentItem>(api.post(`/estimations/${id}/scenarios/${sid}/pdf`)),
   refreshDefaults: (id: number, sid: number, body: { vessel?: boolean; consumption?: boolean }) =>
     env<Scenario>(api.post(`/estimations/${id}/scenarios/${sid}/refresh-defaults`, body)),
 };
@@ -49,6 +51,7 @@ export const offersApi = {
   addRevision: (id: number, body: Body) => env<OfferRevision>(api.post(`/offers/${id}/revisions`, body)),
   updateRevision: (id: number, rid: number, body: Body) => env<OfferRevision>(api.put(`/offers/${id}/revisions/${rid}`, body)),
   send: (id: number, rid: number) => env<OfferRevision>(api.post(`/offers/${id}/revisions/${rid}/send`)),
+  generatePdf: (id: number, rid: number) => env<DocumentItem>(api.post(`/offers/${id}/revisions/${rid}/pdf`)),
   receive: (id: number, rid: number) => env<OfferRevision>(api.post(`/offers/${id}/revisions/${rid}/receive`)),
   accept: (id: number, rid: number, note?: string) => env<OfferRevision>(api.post(`/offers/${id}/revisions/${rid}/accept`, { note })),
   reject: (id: number, rid: number, reason: string) => env<OfferRevision>(api.post(`/offers/${id}/revisions/${rid}/reject`, { reason })),
@@ -61,4 +64,5 @@ export const offersApi = {
 export const fixturesApi = {
   list: (params: ListParams) => page<Fixture>(api.get('/fixtures', { params })),
   get: (id: number) => data<Fixture>(api.get(`/fixtures/${id}`)),
+  generatePdf: (id: number) => env<DocumentItem>(api.post(`/fixtures/${id}/pdf`)),
 };

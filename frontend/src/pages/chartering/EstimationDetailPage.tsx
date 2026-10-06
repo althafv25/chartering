@@ -20,6 +20,7 @@ import { LoadingButton } from '../../components/LoadingButton';
 import { StatusChip } from '../../components/StatusChip';
 import { ActivityPanel } from '../../components/ActivityPanel';
 import { DocumentsPanel } from '../../components/DocumentsPanel';
+import { PdfDocumentButton } from '../../components/PdfDocumentButton';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
 import { ESTIMATION_TYPES, labelOf } from '../../constants/chartering';
@@ -190,7 +191,8 @@ function ScenarioWorkspace({ estimation, scenarioId, onChanged, onCreated }: { e
   }, [scenario.data]);
 
   const readOnly = !estimation.is_editable || !can(P.EstimationsUpdate);
-  const dirty = useMemo(() => !!scenario.data && !!draft && (JSON.stringify(draft) !== JSON.stringify(scenario.data.inputs) || name !== scenario.data.name),
+  // Compare the same editor shape on both sides: MySQL can reorder stored JSON keys.
+  const dirty = useMemo(() => !!scenario.data && !!draft && (JSON.stringify(draft) !== JSON.stringify(normalizeScenarioInputs(scenario.data.inputs)) || name !== scenario.data.name),
     [draft, name, scenario.data]);
 
   const apply = (s: Scenario) => { qc.setQueryData(key, s); onChanged(); };
@@ -231,8 +233,11 @@ function ScenarioWorkspace({ estimation, scenarioId, onChanged, onCreated }: { e
           {dirty && !readOnly && <Chip size="small" color="warning" label="Unsaved changes" />}
         </Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <PdfDocumentButton parentType="estimations" parentId={estimation.id} permission={P.EstimationsUpdate} generate={() => estimationsApi.generatePdf(estimation.id, scenarioId)} disabled={dirty && !readOnly} />
           {!readOnly && <LoadingButton variant="contained" startIcon={<SaveIcon />} loading={save.isPending} disabled={!dirty} onClick={() => save.mutate()}>Save & calculate</LoadingButton>}
-          {!readOnly && !s.is_selected && <Button variant="outlined" disabled={dirty || s.calc_status !== 'calculated'} onClick={() => run.mutate('select')}>Select scenario</Button>}
+          {!readOnly && !s.is_selected && <Tooltip title={dirty ? 'Save & calculate your changes before selecting this scenario.' : s.calc_status !== 'calculated' ? 'Complete the inputs and calculate this scenario first.' : ''}>
+            <span><Button variant="outlined" disabled={dirty || s.calc_status !== 'calculated'} onClick={() => run.mutate('select')}>Select scenario</Button></span>
+          </Tooltip>}
           {!readOnly && <Button startIcon={<ContentCopy />} disabled={dirty} onClick={() => run.mutate('clone')}>Clone</Button>}
           {!readOnly && <Button startIcon={<AddIcon />} disabled={dirty} onClick={() => run.mutate('new')}>New from defaults</Button>}
           {!readOnly && <Button startIcon={<RefreshIcon />} disabled={dirty} onClick={() => setRefresh({ vessel: true, consumption: true })}>Refresh defaults</Button>}

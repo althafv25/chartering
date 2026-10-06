@@ -172,6 +172,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute((int) config('offshore.api_rate_limit'))->by($request->user()?->id ?: $request->ip()));
 
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('exports', fn (Request $request) => Limit::perMinute(10)->by('pdf:'.($request->user()?->id ?: $request->ip())));
     }
 
     private function configureAudit(): void

@@ -13,6 +13,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { KeyValueGrid } from '../../components/KeyValueGrid';
 import { StatusChip } from '../../components/StatusChip';
 import { DocumentsPanel } from '../../components/DocumentsPanel';
+import { PdfDocumentButton } from '../../components/PdfDocumentButton';
 import { ActivityPanel } from '../../components/ActivityPanel';
 import { ErrorState, SectionLoader } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
@@ -59,6 +60,7 @@ export default function ContractDetailPage() {
       <PageHeader title={c.contract_number} subtitle={[c.title, labelOf(CONTRACT_TYPES, c.contract_type), c.customer?.legal_name, c.vessel?.name].filter(Boolean).join(' · ')}
         breadcrumbs={[{ label: 'Contracts', to: '/contracts' }, { label: c.contract_number }]}
         actions={<>
+          {can(P.ContractsRatesView) && <PdfDocumentButton parentType="contracts" parentId={id} permission={P.ContractsUpdate} generate={() => contractsApi.generatePdf(id)} />}
           {c.status === 'draft' && btn('submit', 'Submit for review', P.ContractsSubmit, { variant: 'contained' })}
           {c.status === 'under_review' && btn('reject', 'Return to draft', P.ContractsApprove, { color: 'error' })}
           {c.status === 'under_review' && btn('approve', 'Approve', P.ContractsApprove, { variant: 'contained', color: 'success' })}

@@ -162,6 +162,38 @@ class DocumentService
         ]);
     }
 
+    /** @param array<string, mixed> $meta */
+    public function storeGeneratedPdf(Model $parent, string $binary, array $meta, User $actor): Document
+    {
+        $disk = (string) config('offshore.documents.disk');
+        $path = sprintf('%s/%d/%s/%s.pdf', $parent->getMorphClass(), $parent->getKey(), now()->format('Y/m'), Str::uuid());
+        if (! Storage::disk($disk)->put($path, $binary)) {
+            throw new BusinessRuleException('The PDF could not be stored. Please try again.', 'storage_failed', status: 500);
+        }
+
+        try {
+            return DB::transaction(function () use ($parent, $binary, $meta, $actor, $disk, $path) {
+                $document = Document::query()->create([
+                    'documentable_type' => $parent->getMorphClass(), 'documentable_id' => $parent->getKey(),
+                    'document_type_id' => $meta['document_type_id'], 'title' => $meta['title'],
+                    'document_number' => $meta['document_number'], 'issue_date' => today(),
+                    'disk' => $disk, 'path' => $path, 'original_filename' => mb_substr($this->safeName($meta['original_filename']), 0, 255),
+                    'mime_type' => 'application/pdf', 'size_bytes' => strlen($binary), 'sha256' => hash('sha256', $binary),
+                    'remarks' => $meta['remarks'] ?? null, 'uploaded_by' => $actor->id,
+                ]);
+                activity($parent->getMorphClass())->performedOn($parent)->causedBy($actor)->event('pdf_generated')
+                    ->withProperties(['attributes' => ['document_id' => $document->id, 'reference' => $meta['document_number']]])
+                    ->log('PDF generated: '.$meta['title']);
+
+                return $document->load(['documentType', 'uploader']);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk($disk)->delete($path);
+
+            throw $e;
+        }
+    }
+
     /** Soft delete keeps the file for audit/restore. */
     public function delete(Document $document): void
     {

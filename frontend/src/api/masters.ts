@@ -106,6 +106,7 @@ export const documentsApi = {
   register: (params: ListParams) => page<RegisterDocument>(api.get('/documents', { params })),
   upload: (parentType: string, parentId: number, form: FormData) => env<DocumentItem>(api.post(`/${parentType}/${parentId}/documents`, form)),
   remove: (id: number) => env<null>(api.delete(`/documents/${id}`)),
+  file: (id: number) => api.get<Blob>(`/documents/${id}/download`, { responseType: 'blob' }).then((res) => res.data),
   /** Downloads through the authenticated API (no public file URLs). */
   download: async (doc: DocumentItem) => {
     const res = await api.get(`/documents/${doc.id}/download`, { responseType: 'blob' });

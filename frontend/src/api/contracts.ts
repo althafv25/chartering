@@ -2,6 +2,7 @@ import { api } from './client';
 import type { ApiEnvelope, ListParams, Paginated } from '../types/api';
 import type { ActivityEntry, Fixture, Voyage } from '../types/chartering';
 import type { Amendment, Contract, ContractClause, ContractRate } from '../types/contracts';
+import type { DocumentItem } from '../types/masters';
 
 type Body = Record<string, unknown>;
 const data = <T>(p: Promise<{ data: ApiEnvelope<T> }>) => p.then((r) => r.data.data);
@@ -19,6 +20,7 @@ export const fixtureLifecycleApi = {
 export const contractsApi = {
   list: (params: ListParams) => page<Contract>(api.get('/contracts', { params })),
   get: (id: number) => data<Contract>(api.get(`/contracts/${id}`)),
+  generatePdf: (id: number) => env<DocumentItem>(api.post(`/contracts/${id}/pdf`)),
   create: (body: Body) => env<Contract>(api.post('/contracts', body)),
   update: (id: number, body: Body) => env<Contract>(api.put(`/contracts/${id}`, body)),
   saveRates: (id: number, lock_version: number, rates: ContractRate[]) => env<Contract>(api.put(`/contracts/${id}/rates`, { lock_version, rates })),

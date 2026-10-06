@@ -22,6 +22,10 @@ class DocumentTypeSeeder extends Seeder
             ['survey', 'Survey Report', false],
             ['captain_report', 'Captain Report', false],
             ['agreement', 'Agreement', false],
+            ['offer_pdf', 'Offer PDF', false],
+            ['estimation_pdf', 'Estimation PDF', false],
+            ['fixture_pdf', 'Fixture recap PDF', false],
+            ['contract_pdf', 'Contract PDF', false],
             ['identification', 'Identification', true],
             ['other', 'Other', false],
         ];
