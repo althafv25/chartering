@@ -83,7 +83,7 @@ Verified by automated tests in `backend/tests/Feature/Security` and `Performance
 
 | Area | Status |
 |---|---|
-| Authentication | 289 of 292 API routes sit behind `auth:sanctum`; the 3 public ones are login / forgot / reset, all throttled (login 5 per minute per account+IP). Test: `RouteAccessTest` fails if a new route answers an anonymous request. |
+| Authentication | Every API route except the 3 public ones (login / forgot / reset) sits behind `auth:sanctum`, all throttled (login 5 per minute per account+IP). Test: `RouteAccessTest` fails if a new route answers an anonymous request. |
 | Authorization | A signed-in user with no permissions gets no 2xx and no 5xx from any route (`RouteAccessTest`). Deliberate exceptions, each with a reason, are listed in that test (own profile and notifications, dropdown lookups that return active items only). |
 | Error output | `APP_DEBUG=false` hides exception details (`ApiHardeningTest`). **config:** set `APP_ENV=production` and `APP_DEBUG=false`; lazy-loading guards are only active outside production. |
 | Response headers | API responses, including errors, send `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store, private`. Document downloads keep their own `private, no-store`. **config:** add the same headers plus HSTS and a CSP for the SPA in Nginx (the SPA is not served by Laravel). |

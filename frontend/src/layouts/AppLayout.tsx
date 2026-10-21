@@ -11,26 +11,42 @@ import { initials } from '../utils/format';
 import { surfaceShadows } from '../theme/surfaces';
 
 const DRAWER_WIDTH = 264;
+const DRAWER_WIDTH_COLLAPSED = 72;
+const SIDEBAR_COLLAPSED_KEY = 'offshore_sidebar_collapsed';
 
 export default function AppLayout() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1');
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, c ? '0' : '1');
+      return !c;
+    });
+  };
+
+  const drawerWidth = isDesktop && collapsed ? DRAWER_WIDTH_COLLAPSED : DRAWER_WIDTH;
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <Box component="aside" sx={{ width: { lg: DRAWER_WIDTH }, flexShrink: { lg: 0 } }}>
+      <Box component="aside" sx={{ width: { lg: drawerWidth }, flexShrink: { lg: 0 }, transition: 'width 0.2s ease' }}>
         <Drawer
           variant={isDesktop ? 'permanent' : 'temporary'}
           open={isDesktop || mobileOpen}
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
-          slotProps={{ paper: { sx: { width: DRAWER_WIDTH, border: 0 } } }}
+          slotProps={{ paper: { sx: { width: drawerWidth, border: 0, transition: 'width 0.2s ease', overflowX: 'hidden' } } }}
         >
-          <Sidebar onNavigate={() => setMobileOpen(false)} />
+          <Sidebar
+            onNavigate={() => setMobileOpen(false)}
+            collapsed={isDesktop && collapsed}
+            onToggleCollapsed={isDesktop ? toggleCollapsed : undefined}
+          />
         </Drawer>
       </Box>
 

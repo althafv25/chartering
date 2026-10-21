@@ -1,62 +1,50 @@
 # Documentation Index
 
-Complete documentation for the Offshore Chartering & Vessel Operations system.
+Documentation for the Offshore Chartering & Vessel Operations system. Last cleaned up: 2026-10-10.
 
-## Essential Reading (Start Here)
+## Start here
 
-- **[DATA-FLOW-GUIDE.md](DATA-FLOW-GUIDE.md)** — Start-to-finish user workflow, seeded demo records, screen actions, approvals, operations, billing, and settlement.
-- **[DATA-FLOW-REFERENCE.md](DATA-FLOW-REFERENCE.md)** — Data relationships, snapshots, API handoffs, linked-finance examples, and implementation references.
-- **[01-PRODUCT-REQUIREMENTS.md](01-PRODUCT-REQUIREMENTS.md)** — What the system does. Feature list, user roles, scope.
-- **[02-SYSTEM-ARCHITECTURE.md](02-SYSTEM-ARCHITECTURE.md)** — How it's built. Tech stack, constraints, deployment model.
-- **[14-FINAL-STATUS.md](14-FINAL-STATUS.md)** — Phase 14 completion status. Test results, known limits, what's blocked.
-- **[15-PENDING-ITEMS.md](15-PENDING-ITEMS.md)** — Go-live checklist. Business approvals, CII unblock, penetration test.
+| If you want to… | Read |
+|---|---|
+| Install and run the app | [`../README.md`](../README.md) |
+| See how a voyage charter flows, with every value to type and the exact numbers | [dataflow.md](dataflow.md) |
+| See the same for an offshore day-rate charter (activities, mob/demob, standby) | [offshore-dataflow.md](offshore-dataflow.md) |
+| Read a narrative P&L walkthrough with formula references | [pl.md](pl.md) |
+| Understand the system in one document (architecture, roles, flows) | [SYSTEM-OVERVIEW.md](SYSTEM-OVERVIEW.md) |
+| Follow what users do and what data results from each action | [USER_WORKFLOW.md](USER_WORKFLOW.md), [DATA-FLOW-GUIDE.md](DATA-FLOW-GUIDE.md), [DATA-FLOW-REFERENCE.md](DATA-FLOW-REFERENCE.md) |
 
-## Design & Requirements
+The two walkthroughs are replayed by automated tests (`DataflowWalkthroughTest`, `OffshoreDataflowWalkthroughTest`), so their numbers stay correct.
 
-- **[03-MODULES.md](03-MODULES.md)** — Feature breakdown by module (Masters, Chartering, Operations, Finance, AIS).
-- **[04-DATABASE-ERD.md](04-DATABASE-ERD.md)** — Entity Relationship Diagram and schema overview.
-- **[05-DATABASE-DICTIONARY.md](05-DATABASE-DICTIONARY.md)** — Detailed table/column reference. Required/optional, types, indices.
-- **[07-BUSINESS-RULES.md](07-BUSINESS-RULES.md)** — 52 business rules (52 marked `[CONFIRM]` pending decision). Tax, FX, laytime, CII, offshore.
+## Status and planning
 
-## Development & Operations
+- **[14-FINAL-STATUS.md](14-FINAL-STATUS.md)** — current verification results, what is built, known limits.
+- **[15-PENDING-ITEMS.md](15-PENDING-ITEMS.md)** — go-live checklist, business sign-offs, backlog.
+- **[13-DEVELOPMENT-PROGRESS.md](13-DEVELOPMENT-PROGRESS.md)** — phase-by-phase history and the latest follow-up changes.
+- **[14-DECISIONS.md](14-DECISIONS.md)** — architecture decision log.
 
-- **[06-API-SPECIFICATION.md](06-API-SPECIFICATION.md)** — REST API endpoints, request/response schemas, error codes.
-- **[08-VOYAGE-CALCULATIONS.md](08-VOYAGE-CALCULATIONS.md)** — Voyage financials: revenue, expense, gross profit, daily costs.
-- **[09-AIS-INTEGRATION.md](09-AIS-INTEGRATION.md)** — AIS data flow, providers, position import, fleet map.
-- **[10-PERMISSIONS.md](10-PERMISSIONS.md)** — User roles and permission model. 9 roles, 50 permissions.
-- **[11-TESTING.md](11-TESTING.md)** — Test suites: PHPUnit (292 tests), Vitest (34 tests), E2E (10 tests). Load test, backup drill.
-- **[12-DEPLOYMENT.md](12-DEPLOYMENT.md)** — Infrastructure setup, deploy checklist, performance results, backup procedure.
+## Design and requirements
 
-## Project Management
+- [01-PRODUCT-REQUIREMENTS.md](01-PRODUCT-REQUIREMENTS.md) — scope, users, capabilities, out-of-scope items.
+- [02-SYSTEM-ARCHITECTURE.md](02-SYSTEM-ARCHITECTURE.md) — stack, layering, security, integration design.
+- [03-MODULES.md](03-MODULES.md) — feature breakdown by module.
+- [04-DATABASE-ERD.md](04-DATABASE-ERD.md) and [05-DATABASE-DICTIONARY.md](05-DATABASE-DICTIONARY.md) — data model.
+- [07-BUSINESS-RULES.md](07-BUSINESS-RULES.md) — business rules; items marked `[CONFIRM]` await a business decision.
+- [08-VOYAGE-CALCULATIONS.md](08-VOYAGE-CALCULATIONS.md) — estimation, offshore revenue, laytime, bunker and finance formulas.
+- [10-PERMISSIONS.md](10-PERMISSIONS.md) — roles and permission catalogue.
 
-- **[13-DEVELOPMENT-PROGRESS.md](13-DEVELOPMENT-PROGRESS.md)** — Phase-by-phase status. Phases 2–12 complete, phase 13 blocked, phase 14 in progress.
-- **[14-DECISIONS.md](14-DECISIONS.md)** — Architecture decisions and tradeoffs.
-- **[15-PENDING-ITEMS.md](15-PENDING-ITEMS.md)** — Pre-launch checklist and effort estimates.
+## Interfaces and modules
 
-## Quick Navigation
+- [06-API-SPECIFICATION.md](06-API-SPECIFICATION.md) — REST endpoints, envelopes, error codes.
+- [09-AIS-INTEGRATION.md](09-AIS-INTEGRATION.md) — AIS providers and fleet map.
+- [CII-REQUIREMENTS.md](CII-REQUIREMENTS.md) — CII scope, formula sets and the confirmations still needed.
 
-**Starting Development:**
-1. Read [01-PRODUCT-REQUIREMENTS.md](01-PRODUCT-REQUIREMENTS.md) to understand scope
-2. Read [02-SYSTEM-ARCHITECTURE.md](02-SYSTEM-ARCHITECTURE.md) for tech choices
-3. Check [README.md](../README.md) for local setup
+## Quality and operations
 
-**Before Go-Live:**
-1. Review [15-PENDING-ITEMS.md](15-PENDING-ITEMS.md) for blockers
-2. Follow [12-DEPLOYMENT.md](12-DEPLOYMENT.md) §5–6 for infrastructure
-3. Schedule business demos from [15-PENDING-ITEMS.md](15-PENDING-ITEMS.md) checklist
+- [11-TESTING.md](11-TESTING.md) — commands, suites, walkthrough tests.
+- [12-DEPLOYMENT.md](12-DEPLOYMENT.md) — environments, production checklist, load-test results.
+- [DEPLOYMENT-RUNBOOK.md](DEPLOYMENT-RUNBOOK.md) — release checks, deploy and rollback steps.
+- [BACKUP-SETUP.md](BACKUP-SETUP.md) — backup and restore procedure.
 
-**Troubleshooting:**
-1. Check [11-TESTING.md](11-TESTING.md) for test commands and coverage
-2. Review [07-BUSINESS-RULES.md](07-BUSINESS-RULES.md) for logic questions
-3. See [06-API-SPECIFICATION.md](06-API-SPECIFICATION.md) for API behavior
+## Current status
 
-**Business Questions:**
-1. [05-DATABASE-DICTIONARY.md](05-DATABASE-DICTIONARY.md) — Data model reference
-2. [07-BUSINESS-RULES.md](07-BUSINESS-RULES.md) — Business logic and assumptions (many marked `[CONFIRM]`)
-3. [08-VOYAGE-CALCULATIONS.md](08-VOYAGE-CALCULATIONS.md) — How financials are computed
-4. [09-AIS-INTEGRATION.md](09-AIS-INTEGRATION.md) — AIS behavior and data flow
-
----
-
-**Current Status:** Phases 2–12 complete and tested. Phase 13 (CII) awaits business confirmation. Phase 14 testing in progress.  
-**Last Updated:** 2026-10-05
+Phases 2–13 complete and tested (333 backend tests, 59 frontend tests). CII figures await Marine Operations sign-off. Modules await business demos. See [14-FINAL-STATUS.md](14-FINAL-STATUS.md).

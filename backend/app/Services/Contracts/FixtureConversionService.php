@@ -63,6 +63,10 @@ class FixtureConversionService
                     'unit' => ContractRate::UNIT_OF[$rateType], 'description' => "As fixed ({$locked->fixture_number})",
                 ]], [], $actor, $locked->id);
 
+                // A voyage created from this fixture before the contract existed has no contract yet; link it now so it
+                // shows on the contract and its offshore activities resolve rates from it (OA-12).
+                Voyage::query()->where('fixture_id', $locked->id)->whereNull('contract_id')->update(['contract_id' => $contract->id]);
+
                 activity('fixtures')->performedOn($locked)->causedBy($actor)->event('contract_created')
                     ->withProperties(['attributes' => ['contract' => $contract->contract_number]])->log("Contract {$contract->contract_number} created");
 

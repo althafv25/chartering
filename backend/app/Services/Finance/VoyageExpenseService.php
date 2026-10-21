@@ -163,8 +163,10 @@ class VoyageExpenseService
             return;
         }
 
-        $items = $da->items()->with('category')->get();
-        foreach ($items as $item) {
+        // Several DA items can map to the same expense category (e.g. pilotage and berth hire are both "Port charges").
+        // They are summed into ONE expense per category so that no cost is lost; the lookup key is (DA, category).
+        $groups = [];
+        foreach ($da->items()->with('category')->get() as $item) {
             $amount = $item->actual_amount;
             if ($amount === null || Decimal::isZero((string) $amount)) {
                 continue;
@@ -177,6 +179,16 @@ class VoyageExpenseService
                     'da_cost_category_unmapped'
                 );
             }
+
+            $groups[$expenseCategoryId]['total'] = Decimal::add($groups[$expenseCategoryId]['total'] ?? '0', (string) $amount);
+            $groups[$expenseCategoryId]['labels'][] = $item->description ?? ($item->category?->name ?? 'Port DA cost');
+        }
+
+        foreach ($groups as $expenseCategoryId => $group) {
+            $amount = $group['total'];
+            $description = count($group['labels']) === 1
+                ? $group['labels'][0]
+                : (ExpenseCategory::query()->whereKey($expenseCategoryId)->value('name') ?? 'Port DA').' — '.implode(', ', $group['labels']);
 
             $existing = VoyageExpense::query()
                 ->where('source_type', $da->getMorphClass())
@@ -193,11 +205,11 @@ class VoyageExpenseService
             $data = [
                 'voyage_id' => $da->voyage_id,
                 'expense_category_id' => $expenseCategoryId,
-                'description' => $item->description ?? ($item->category?->name ?? 'Port DA cost'),
+                'description' => mb_substr($description, 0, 255),
                 'is_estimate' => false,
                 'quantity' => null,
                 'rate' => null,
-                'amount' => (string) $amount,
+                'amount' => $amount,
                 'currency' => $da->currency,
                 'supplier_company_id' => $da->agent_company_id,
                 'incurred_at' => $da->approved_at ?? now(),

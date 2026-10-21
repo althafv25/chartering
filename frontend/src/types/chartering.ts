@@ -299,6 +299,7 @@ export interface Voyage {
   estimation_id: number | null;
   estimation_scenario_id: number | null;
   contract_id?: number | null;
+  charterer_company_id?: number | null;
   fixture?: { id: number; fixture_number: string } | null;
   contract?: { id: number; contract_number: string; status: string } | null;
   conversion_type: 'fixture' | 'direct_estimation';

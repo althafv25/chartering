@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\Masters\VesselStatusController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\Operations\BunkerController;
 use App\Http\Controllers\Api\V1\Operations\CaptainReportController;
+use App\Http\Controllers\Api\V1\Operations\CiiController;
 use App\Http\Controllers\Api\V1\Operations\LaytimeController;
 use App\Http\Controllers\Api\V1\Operations\MilestoneController;
 use App\Http\Controllers\Api\V1\Operations\OffHireController;
@@ -204,6 +205,18 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::apiResource('bunker-stems', BunkerController::class)->except(['destroy']);
     Route::post('bunker-stems/{bunkerStem}/deliver', [BunkerController::class, 'deliver']);
     Route::post('bunker-stems/{bunkerStem}/cancel', [BunkerController::class, 'cancel']);
+
+    // ===== CII (CARBON INTENSITY INDICATOR) ROUTES =====
+    Route::get('cii/fleet-summary', [CiiController::class, 'fleetSummary']);
+    Route::get('cii/formula-sets', [CiiController::class, 'formulaSets']);
+    Route::post('cii/formula-sets', [CiiController::class, 'storeFormulaSet']);
+    Route::put('cii/formula-sets/{formulaSet}', [CiiController::class, 'updateFormulaSet']);
+    Route::post('cii/formula-sets/{formulaSet}/verify', [CiiController::class, 'verifyFormulaSet']);
+    Route::post('cii/formula-sets/{formulaSet}/retire', [CiiController::class, 'retireFormulaSet']);
+    Route::apiResource('cii-vessel-years', CiiController::class)->parameters(['cii-vessel-years' => 'ciiVesselYear'])->except(['destroy']);
+    Route::post('cii-vessel-years/{ciiVesselYear}/calculate', [CiiController::class, 'calculate']);
+    Route::post('cii-vessel-years/{ciiVesselYear}/verify', [CiiController::class, 'verify']);
+    Route::post('cii-vessel-years/{ciiVesselYear}/reopen', [CiiController::class, 'reopen']);
 
     Route::apiResource('port-das', PortDaController::class)->except(['destroy']);
     Route::post('port-das/{portDa}/items', [PortDaController::class, 'saveItems']);

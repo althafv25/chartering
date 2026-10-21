@@ -1,17 +1,17 @@
 # CII (Carbon Intensity Indicator) Business Requirements Template
 
-**Version:** 1.0  
-**Phase:** 13 (CII Implementation - Blocked on Approvals)  
-**Status:** Awaiting Marine Operations Confirmation  
-**Last Updated:** 2026-10-04
+**Version:** 1.1
+**Phase:** 13 (CII Implementation — Built, pending Marine Operations sign-off on formula figures)
+**Status:** Infrastructure built and tested; BR-CII-02 through BR-CII-04 await Marine Operations confirmation before the seeded formula set is marked `verified`
+**Last Updated:** 2026-10-09
 
 ---
 
 ## Executive Summary
 
-The Carbon Intensity Indicator (CII) module calculates and tracks compliance with IMO MARPOL Annex VI carbon intensity regulations. This document outlines the business requirements that must be confirmed by Marine Operations before CII implementation proceeds.
+The Carbon Intensity Indicator (CII) module calculates and tracks compliance with IMO MARPOL Annex VI carbon intensity regulations. The module (migration, models, pure calculator, service, controller, routes, frontend page) is built and tested (see `docs/13-DEVELOPMENT-PROGRESS.md` phase 13). It ships with one `draft` formula set (`imo-2023-draft`) pre-loaded with the published IMO MEPC.336(76)/337(76)/338(76) reference lines, rating boundaries and emission factors so the module is usable immediately for estimates. **This document's open questions (BR-CII-01 through BR-CII-04) still need Marine Operations confirmation before that formula set — or any new one — is marked `verified` and relied on for regulatory filing.** Until then, every calculation and rating produced by the system should be treated as provisional.
 
-**Current Status:** Phase 13 infrastructure built (models, controllers, services ready). Blocked on confirmation of BR-CII-02 through BR-CII-04 by Marine Operations.
+**Current status:** Phase 13 built and tested (`CiiCalculator`, `CiiService`, `CiiController`, `/fleet/cii` page). Formula-set figures (reference lines, reduction factors, rating boundaries, emission factors) are seeded as a sensible IMO-2023 default but remain `draft` pending the confirmations below.
 
 ---
 
@@ -29,7 +29,7 @@ The Carbon Intensity Indicator (CII) module calculates and tracks compliance wit
 - [ ] Are there size thresholds other than 5,000 GT that apply to our vessel types?
 - [ ] Which reporting year(s) apply? (e.g., 2025, 2026+)
 
-**Implementation:** `CiiVesselYear.scope_status` will indicate vessel-year combinations as `in-scope` or `exempt`.
+**Implementation (built):** `cii_vessel_years.scope_status` indicates each vessel-year as `in_scope` or `exempt`; the fleet summary (`GET /cii/fleet-summary`) only counts `in_scope` records. The seeded formula set's `reference_lines` currently cover the fleet's actual vessel-type codes (PSV, AHTS, CREW, UTIL, DSV, ROVSV, SURVEY, TUG, plus BULK/TANKER/GENCARGO) using the general offshore-support reference line as a placeholder for most offshore types — confirm which of these are genuinely in scope and correct the per-type figures accordingly.
 
 ---
 
@@ -47,58 +47,30 @@ The Carbon Intensity Indicator (CII) module calculates and tracks compliance wit
 **Required Parameters for Each Formula Set:**
 
 1. **Formula Set Metadata**
-   - [ ] Code: e.g., `cii-2023-mepc325` (unique identifier)
-   - [ ] Name: e.g., "MARPOL Annex VI CII 2023 (MEPC.325(75))"
-   - [ ] Effective Date: e.g., 2023-01-01
-   - [ ] Expiration Date: e.g., 2026-12-31 (or null if ongoing)
-   - [ ] Status: `draft` (for testing) → `verified` (approved) → `retired` (superseded)
+   - [x] Code: `imo-2023-draft` (seeded; create a new code for any revised set — codes are immutable once created)
+   - [x] Name: "IMO MARPOL Annex VI CII 2023 (MEPC.337(76)/MEPC.338(76)) — draft, pending Marine Operations confirmation"
+   - [x] Effective Date: 2023-01-01
+   - [x] Expiration Date: none (open-ended until retired)
+   - [x] Status: seeded as `draft`. Lifecycle is `draft → verified → retired`, enforced by `CiiService::markFormulaSetStatus` (one-way; a verified set cannot go back to draft, only forward to retired).
 
 2. **Reference Lines** (per ship type)
-   - [ ] Reference line coefficient (a): varies by ship type
-   - [ ] Reference line exponent (c): typically 3.0
-   - [ ] Example: For Bulk Carriers: a = 961.79, c = 0.486
+   - [ ] Reference line coefficient (a): varies by ship type — **seeded with published figures, confirm fleet coverage**
+   - [ ] Reference line exponent (c): typically 3.0 — **seeded; confirm**
+   - Seeded example (BULK): a = 961.79, c = 0.477. Offshore support types (PSV, AHTS, etc.) are seeded with a = 69.72, c = 0.195 as a placeholder — **this must be confirmed or replaced per vessel type**
 
 3. **Reduction Factors (Arctan Curve)**
-   - [ ] Year 1 reduction: typically 1%
-   - [ ] Year 2 reduction: typically 3%
-   - [ ] Year 3 reduction: typically 5%
-   - [ ] Year 4 reduction: typically 7%
-   - [ ] And so on through 2030+
+   - [ ] Year 1 reduction: typically 1% — seeded 2023 = 5%, 2024 = 7%, 2025 = 9%, 2026 = 11% (confirm against the current IMO schedule; **note: this field is captured in `parameters.reduction_factors` but is not yet consumed by `CiiCalculator`, which computes the attained/reference ratio directly without a year-based reduction adjustment — see "Known Gap" below**)
 
 4. **Rating Thresholds** (as % of reference line)
-   - [ ] Rating A: < 50%
-   - [ ] Rating B: 50% to < 72%
-   - [ ] Rating C: 72% to < 83%
-   - [ ] Rating D: 83% to ≤ 100%
-   - [ ] Rating E: > 100%
+   - [x] Rating A: < 50% — seeded and implemented
+   - [x] Rating B: 50% to < 72% — seeded and implemented
+   - [x] Rating C: 72% to < 83% — seeded and implemented
+   - [x] Rating D: 83% to ≤ 100% — seeded and implemented
+   - [x] Rating E: > 100% — implemented as the fallback case
 
-**Questions for Marine Operations:**
-- [ ] Which IMO resolution applies? (MEPC.325(75), MEPC.328(76), future amendments?)
-- [ ] Provide reference lines for each ship type in our fleet (Bulk Carrier, Container Ship, etc.)
-- [ ] Confirm reduction factors for each year from 2023 to 2030
-- [ ] Confirm rating boundaries (are they fixed at 50-72-83-100 or do they change per regulation?)
-- [ ] Are there regional or flag-state specific adjustments?
+**Implementation (built):** `cii_formula_sets.parameters` JSON column, exactly as specified in this document (`reference_lines`, `reduction_factors`, `rating_boundaries`, `emission_factors`). Managed via `GET/POST /cii/formula-sets`, `PUT /cii/formula-sets/{id}`, `POST /cii/formula-sets/{id}/verify`, `POST /cii/formula-sets/{id}/retire`.
 
-**Implementation:** `CiiFormulaSet.parameters` stored as JSON:
-```json
-{
-  "reference_lines": {
-    "bulk_carrier": { "a": 961.79, "c": 0.486 },
-    "tanker": { "a": 107.48, "c": 0.456 }
-  },
-  "reduction_factors": {
-    "2023": 0.01,
-    "2024": 0.03,
-    "2025": 0.05
-  },
-  "rating_boundaries": {
-    "A": 0.50,
-    "B": 0.72,
-    "C": 0.83,
-    "E": 1.00
-  }
-}
-```
+**Known gap:** `App\Domain\Cii\CiiCalculator` implements the attained-vs-reference-line ratio and A–E rating exactly as specified, but does **not** currently apply the year-based `reduction_factors` to adjust the reference line before computing the ratio. If BR-CII-02 confirmation determines the reduction factor must shift the reference line year over year (rather than being purely informational), `CiiCalculator::calculate()` needs a small follow-up change before any `verified` formula set is relied on for filing.
 
 ---
 
@@ -114,7 +86,7 @@ The Carbon Intensity Indicator (CII) module calculates and tracks compliance wit
 - [ ] Do we have accurate DWT and GT measurements for all vessels?
 - [ ] Are there any vessels with dual classification that require different CII metrics?
 
-**Implementation:** `CiiVesselYear.capacity_metric` = 'DWT' | 'GT'
+**Implementation (built):** `cii_vessel_years.capacity_metric` = `DWT` | `GT`, selected per record when it is created or edited; `capacity_value` is a snapshot of the vessel's `dwt_mt` or `gt` at that time (not a live reference), so later corrections to the vessel master record do not silently change a past calculation.
 
 ---
 
@@ -124,14 +96,15 @@ The Carbon Intensity Indicator (CII) module calculates and tracks compliance wit
 
 **Background:** Fuel emission factors convert fuel consumption to CO2 emissions. IMO publishes standard factors per fuel type in the CII Guidelines.
 
-**Emission Factors (CO2 per mass of fuel, kg CO2/kg fuel):**
+**Emission Factors (CO2 per mass of fuel, kg CO2/kg fuel) — seeded, confirm before verifying:**
 
 | Fuel Type | Factor (Cf) | Notes |
 |-----------|-------------|-------|
 | Heavy Fuel Oil (HFO) | 3.151 | Standard bunker fuel |
-| Marine Gas Oil (MGO) | 3.206 | Lighter distillate |
-| Liquefied Natural Gas (LNG) | 2.750 | Methane slip potential |
-| Marine Biofuel | Reduced per source | Typically 0-50% of fossil baseline |
+| Marine Gas Oil / Diesel Oil (MGO/MDO) | 3.206 | Lighter distillate |
+| Liquefied Petroleum Gas (LPG) | 3.000 | Seeded; confirm |
+| Liquefied Natural Gas (LNG) | 2.750 | Methane slip potential — not separately modelled |
+| Marine Biofuel | 1.500 | Placeholder; confirm actual blend factor |
 
 **Questions for Marine Operations:**
 - [ ] Confirm emission factors (Cf) for each fuel type used by our fleet
@@ -140,36 +113,26 @@ The Carbon Intensity Indicator (CII) module calculates and tracks compliance wit
 - [ ] Should we use the IMO 2023 factors or if updated, the 2024+ figures?
 - [ ] What is the accounting period: calendar year or IMO reporting year (Sept-Aug)?
 
-**Implementation:** `CiiFormulaSet.parameters.emission_factors`:
-```json
-{
-  "emission_factors": {
-    "HFO": 3.151,
-    "MGO": 3.206,
-    "LNG": 2.750,
-    "marine_biofuel": 1.500
-  }
-}
-```
+**Implementation (built):** `CiiFormulaSet.parameters.emission_factors`, keyed by the fuel code used elsewhere in the system (`fuel_types.code`: HFO, VLSFO, ULSFO, LSMGO, MGO, MDO, LNG). If a vessel-year's `fuel_consumption` references a fuel code with no `Cf` in the linked formula set, `calculate()` returns `422 cii_calculation_incomplete` naming the missing fuel — it never silently drops that fuel's emissions from the total.
 
 ---
 
 ## CII Calculation Formula
 
-**Core Formula (once parameters are confirmed):**
+**Implemented in `App\Domain\Cii\CiiCalculator` (pure PHP, no Eloquent/HTTP, `bcmath`-exact, version `1.0.0`):**
 
 ```
-CII_attained = (Total CO2 emissions) / (Capacity × Distance sailed)
-CII_attained = (Sum(fuel_consumption[i] × Cf[i])) / (Capacity × Distance)
+CII_attained = (Total CO2 emissions in kg) / (Capacity × Distance sailed)
+CII_attained = (Σ fuel_consumption[i] (tonnes) × Cf[i] × 1000) / (Capacity × Distance)
 ```
 
 Where:
-- `fuel_consumption[i]` = mass of fuel type i used during year (tonnes)
-- `Cf[i]` = emission factor for fuel type i (kg CO2 / kg fuel)
-- `Capacity` = DWT or GT per vessel type (tonnes)
-- `Distance` = nautical miles sailed
+- `fuel_consumption[i]` = mass of fuel type i used during year (tonnes), entered manually per vessel-year today (not yet aggregated automatically from verified captain reports — see Integration Points)
+- `Cf[i]` = emission factor for fuel type i (kg CO2 / kg fuel), from the linked formula set
+- `Capacity` = DWT or GT per vessel type (tonnes), snapshotted from the vessel master at calculation time
+- `Distance` = nautical miles sailed, entered manually per vessel-year today (not yet aggregated from AIS/voyage data — see Integration Points)
 
-**Rating Calculation:**
+**Rating Calculation (implemented exactly as specified):**
 ```
 CII_reference = a × (Capacity)^(-c)
 CII_ratio = CII_attained / CII_reference
@@ -281,16 +244,17 @@ Once calculated, the system will generate:
 
 Before CII module goes to production:
 
-- [ ] BR-CII-01: Vessel applicability list confirmed and loaded
-- [ ] BR-CII-02: Formula set(s) verified and entered into `cii_formula_sets` table
-- [ ] BR-CII-03: Capacity metrics (DWT/GT) confirmed for all vessel types
-- [ ] BR-CII-04: Emission factors confirmed and entered
-- [ ] Fuel consumption data source identified (captain reports, bunker receipts, etc.)
-- [ ] Distance data source identified (AIS, voyage plan, manual)
-- [ ] Approval workflow documented and tested
-- [ ] Sample calculation performed and manually verified
-- [ ] Reporting templates created
-- [ ] User documentation written
+- [ ] BR-CII-01: Vessel applicability list confirmed and loaded (`scope_status` field is built; data entry is manual per vessel-year)
+- [ ] BR-CII-02: Formula set(s) verified — mark the seeded `imo-2023-draft` set `verified` via `POST /cii/formula-sets/{id}/verify` once Marine Operations confirms the figures (code, UI and API are built; only the business sign-off is outstanding)
+- [ ] BR-CII-03: Capacity metrics (DWT/GT) confirmed for all vessel types (field is built and snapshotted per record; confirm the correct metric choice per type)
+- [ ] BR-CII-04: Emission factors confirmed and entered (seeded with published IMO figures; confirm or correct per fuel code)
+- [ ] Fuel consumption data source identified (captain reports, bunker receipts, etc.) — **currently manual entry only; automatic aggregation from verified captain reports/ROB ledger is not built**
+- [ ] Distance data source identified (AIS, voyage plan, manual) — **currently manual entry only; automatic aggregation from AIS or voyage data is not built**
+- [ ] Decide whether `reduction_factors` should adjust the reference line year over year — if yes, `CiiCalculator` needs a small follow-up change (see "Known gap" above)
+- [ ] Approval workflow documented and tested — **built and tested**: draft → calculated → verified, self-approval blocked, reopen requires a reason
+- [ ] Sample calculation performed and manually verified — **covered by automated tests** (`CiiTest.php`); a manual sign-off calculation by Marine Operations is still recommended before go-live
+- [ ] Reporting templates created — not built; CII does not yet appear in `GET /reports` or `GET /statistics`
+- [ ] User documentation written — this document; a short end-user guide for the `/fleet/cii` page is not yet written
 - [ ] Training completed for crew and shore staff
 - [ ] Regulatory filing checklist prepared
 

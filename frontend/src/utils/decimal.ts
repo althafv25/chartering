@@ -22,6 +22,20 @@ export function trimZeros(value: string | null | undefined): string {
   return t === '-0' ? '0' : t;
 }
 
+/**
+ * Rate / unit price for display: thousands grouped, at least 2 decimals, extra precision kept only when it is
+ * significant. "55.0000" → "55.00", "4.6231" → "4.6231", "1200" → "1,200.00".
+ */
+export function rate(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const t = trimZeros(value);
+  const [i, f = ''] = t.split('.');
+  return groupDigits(`${i}.${f.padEnd(2, '0')}`);
+}
+
+/** Quantity for display: thousands grouped, trailing zeros dropped. "2000.000" → "2,000", "2500.500" → "2,500.5". */
+export const quantity = (value: string | null | undefined) => groupDigits(trimZeros(value) === '—' ? null : trimZeros(value));
+
 /** Days with at most `dp` decimals, by string truncation-free rounding is backend's job — here we only shorten long scales. */
 export function days(value: string | null | undefined, dp = 2): string {
   if (value === null || value === undefined || value === '') return '—';

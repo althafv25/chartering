@@ -20,7 +20,7 @@ import { P } from '../../constants/permissions';
 import { BUSINESS_TYPES, RATE_BASES, labelOf } from '../../constants/chartering';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDate, formatDateTime } from '../../utils/format';
-import { groupDigits, money, trimZeros } from '../../utils/decimal';
+import { money, quantity as fmtQty, rate as fmtRate, trimZeros } from '../../utils/decimal';
 
 type Action = 'submit' | 'approve' | 'reject' | 'fail' | 'cancel';
 const NEEDS_REASON: Action[] = ['reject', 'fail', 'cancel'];
@@ -100,8 +100,8 @@ export default function FixtureDetailPage() {
         {tab === 'recap' && (
           <CardContent>
             <KeyValueGrid columns={4} items={[
-              ['Fixture date', formatDate(f.fixture_date)], ['Rate', `${groupDigits(f.rate)} ${f.currency} ${labelOf(RATE_BASES, f.rate_basis)}`],
-              ['Quantity', f.quantity ? `${groupDigits(f.quantity)} ${f.quantity_unit ?? ''}` : null], ['Laycan', f.laycan_from ? `${formatDate(f.laycan_from)} – ${formatDate(f.laycan_to)}` : null],
+              ['Fixture date', formatDate(f.fixture_date)], ['Rate', `${fmtRate(f.rate)} ${f.currency} ${labelOf(RATE_BASES, f.rate_basis)}`],
+              ['Quantity', f.quantity ? `${fmtQty(f.quantity)} ${f.quantity_unit ?? ''}` : null], ['Laycan', f.laycan_from ? `${formatDate(f.laycan_from)} – ${formatDate(f.laycan_to)}` : null],
               ['Commissions', `add ${trimZeros(f.commissions.address_pct)}% · bkg ${trimZeros(f.commissions.brokerage_pct)}% · other ${trimZeros(f.commissions.other_pct)}%`],
               ['Ports', f.ports.map((p) => p.label).join(' → ')], ['Offer', snap?.offer ? `${snap.offer.number} rev ${snap.offer.revision_no}` : null],
               ['Estimation', snap?.estimation ? `${snap.estimation.number} / scenario ${snap.estimation.scenario_code}` : null],

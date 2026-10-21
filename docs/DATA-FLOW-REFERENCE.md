@@ -180,7 +180,7 @@ PDF generation returns a `201` document envelope and stores a private, immutable
 
 ## 5. Linked-finance example
 
-The current manual revenue, expense, invoice, and payable creation drawers omit some relationship fields. These API examples complete the linked handoff for testing.
+The manual revenue, expense, invoice and payable drawers have a Voyage selector (invoices also list the voyage's confirmed revenue to bill), so the UI covers this flow. These API examples are for scripted or Postman testing of the same handoff.
 
 Use Postman or another authenticated API client with `Accept: application/json`, `Content-Type: application/json`, and the session's Bearer token. Values such as `{{voyage_id}}` are Postman-style variables; substitute actual numeric IDs. Amounts are decimal strings. Choose real issue/due dates appropriate to your exercise.
 

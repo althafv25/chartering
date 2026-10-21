@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Box, Chip, Collapse, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, Collapse, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Tooltip, Typography } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AnchorIcon from '@mui/icons-material/Anchor';
 import { useQuery } from '@tanstack/react-query';
 import { aisApi } from '../api/ais';
@@ -26,7 +28,12 @@ function SoonChip({ phase }: { phase: number }) {
   return <Chip label={`P${phase}`} size="small" sx={{ height: 18, fontSize: 10, bgcolor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)' }} />;
 }
 
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({ onNavigate, collapsed = false, onToggleCollapsed }: {
+  onNavigate?: () => void;
+  /** Icons-only rail mode (desktop only; the mobile drawer always shows full labels). */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+}) {
   const { can } = useAuth();
   const { pathname } = useLocation();
 
@@ -53,33 +60,55 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {...(disabled ? {} : { to, end: to === '/' })}
         disabled={disabled}
         onClick={disabled ? undefined : onNavigate}
-        sx={{ ...itemSx, pl: nested ? 6.5 : 2, py: nested ? 0.6 : 0.9 }}
+        aria-label={collapsed ? label : undefined}
+        sx={{
+          ...itemSx, pl: collapsed ? 2 : (nested ? 6.5 : 2), py: nested ? 0.6 : 0.9,
+          justifyContent: collapsed ? 'center' : 'flex-start',
+        }}
       >
-        {Icon && <ListItemIcon><Icon fontSize="small" /></ListItemIcon>}
-        <ListItemText primary={label} slotProps={{ primary: { fontSize: nested ? 13.5 : 14, fontWeight: nested ? 500 : 600 } }} />
-        {disabled && <SoonChip phase={phase} />}
+        {Icon && <ListItemIcon sx={collapsed ? { minWidth: 0, justifyContent: 'center' } : undefined}><Icon fontSize="small" /></ListItemIcon>}
+        {!collapsed && <ListItemText primary={label} slotProps={{ primary: { fontSize: nested ? 13.5 : 14, fontWeight: nested ? 500 : 600 } }} />}
+        {!collapsed && disabled && <SoonChip phase={phase} />}
       </ListItemButton>
     );
+    const titled = collapsed ? `${label}${disabled ? ` (planned for phase ${phase})` : ''}` : disabled ? `Planned for phase ${phase}` : null;
 
-    return disabled
-      ? <Tooltip key={to} title={`Planned for phase ${phase}`} placement="right"><span>{content}</span></Tooltip>
+    return titled
+      ? <Tooltip key={to} title={titled} placement="right"><span>{content}</span></Tooltip>
       : <Box key={to}>{content}</Box>;
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'primary.dark', color: '#fff' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 2.5, py: 2.25 }}>
-        <AnchorIcon sx={{ color: '#4fb3d9' }} />
-        <Box>
-          <Typography fontWeight={700} lineHeight={1.1}>{env.appName}</Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>Vessel Operations</Typography>
-        </Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'primary.dark', color: '#fff', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: collapsed ? 0 : 2.5, py: 2.25, justifyContent: collapsed ? 'center' : 'flex-start' }}>
+        <AnchorIcon sx={{ color: '#4fb3d9', flexShrink: 0 }} />
+        {!collapsed && (
+          <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+            <Typography fontWeight={700} lineHeight={1.1} noWrap>{env.appName}</Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }} noWrap>Vessel Operations</Typography>
+          </Box>
+        )}
       </Box>
 
-      <Box component="nav" aria-label="Main navigation" sx={{ flex: 1, overflowY: 'auto', pb: 2 }}>
+      <Box component="nav" aria-label="Main navigation" sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', pb: 2 }}>
         <List disablePadding>
           {sections.map((s) => {
             if (!s.children) return renderLink(s.label, s.to!, s.phase, s.icon);
+
+            // Collapsed rail: groups render as flat, directly-clickable icons (first child) with the
+            // group label in the tooltip — there is no room to show an expandable sub-list of labels.
+            if (collapsed) {
+              const first = s.children[0];
+              return (
+                <Tooltip key={s.label} title={s.label} placement="right">
+                  <Box>
+                    <ListItemButton component={NavLink} to={first.to} onClick={onNavigate} aria-label={s.label} sx={{ ...itemSx, py: 0.9, justifyContent: 'center' }}>
+                      <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center' }}><s.icon fontSize="small" /></ListItemIcon>
+                    </ListItemButton>
+                  </Box>
+                </Tooltip>
+              );
+            }
 
             const isOpen = !!open[s.label];
             return (
@@ -101,6 +130,21 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           })}
         </List>
       </Box>
+
+      {onToggleCollapsed && (
+        <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.08)', p: 1, display: 'flex', justifyContent: collapsed ? 'center' : 'flex-end' }}>
+          <Tooltip title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right">
+            <IconButton
+              onClick={onToggleCollapsed}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              size="small"
+              sx={{ color: 'rgba(255,255,255,0.65)', '&:hover': { bgcolor: 'rgba(255,255,255,0.07)', color: '#fff' } }}
+            >
+              {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
     </Box>
   );
 }

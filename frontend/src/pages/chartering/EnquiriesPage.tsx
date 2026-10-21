@@ -14,7 +14,7 @@ import { P } from '../../constants/permissions';
 import { BUSINESS_TYPES, ENQUIRY_STATUSES, labelOf } from '../../constants/chartering';
 import { useDebounce } from '../../hooks/useDebounce';
 import { formatDate, humanize } from '../../utils/format';
-import { groupDigits } from '../../utils/decimal';
+import { quantity as fmtQty } from '../../utils/decimal';
 import type { Enquiry } from '../../types/chartering';
 import { EnquiryDialog } from './EnquiryDialog';
 
@@ -36,7 +36,7 @@ export default function EnquiriesPage() {
     { key: 'no', header: 'Enquiry', render: (e) => <Box><Typography fontWeight={600} fontSize={14}>{e.enquiry_number}</Typography><Typography variant="body2" color="text.secondary">{formatDate(e.received_at)}</Typography></Box> },
     { key: 'type', header: 'Type', render: (e) => labelOf(BUSINESS_TYPES, e.business_type) },
     { key: 'charterer', header: 'Charterer', render: (e) => e.charterer?.legal_name ?? '—' },
-    { key: 'cargo', header: 'Cargo / service', hideBelow: 'md', render: (e) => [e.cargo_description, e.quantity ? `${groupDigits(e.quantity)} ${e.quantity_unit ?? ''}` : null].filter(Boolean).join(' · ') || '—' },
+    { key: 'cargo', header: 'Cargo / service', hideBelow: 'md', render: (e) => [e.cargo_description, e.quantity ? `${fmtQty(e.quantity)} ${e.quantity_unit ?? ''}` : null].filter(Boolean).join(' · ') || '—' },
     { key: 'route', header: 'Route', hideBelow: 'lg', render: route },
     { key: 'laycan', header: 'Laycan', hideBelow: 'md', render: (e) => (e.laycan_from ? `${formatDate(e.laycan_from)} – ${formatDate(e.laycan_to)}` : '—') },
     { key: 'work', header: 'Est. / offers', hideBelow: 'lg', align: 'right', render: (e) => `${e.estimations_count ?? 0} / ${e.offers_count ?? 0}` },

@@ -5,6 +5,7 @@ namespace App\Services\Finance;
 use App\Enums\Permission;
 use App\Enums\VoyageRevenueStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Contract;
 use App\Models\LaytimeCalculation;
 use App\Models\OffshoreActivity;
 use App\Models\RevenueCategory;
@@ -151,6 +152,7 @@ class VoyageRevenueService
             }
 
             $activityTypeName = $activity->activityType?->name ?? 'Activity';
+            [$commissionPct, $commissionAmount] = $this->activityCommission($activity, $category);
 
             $data = [
                 'voyage_id' => $activity->voyage_id,
@@ -163,7 +165,7 @@ class VoyageRevenueService
                 'rate' => null, // Rate is already calculated in revenue_amount
                 'currency' => $activity->currency,
                 'amount' => $activity->revenue_amount,
-                'commission_pct_total' => '0',
+                'commission_pct_total' => $commissionPct,
                 'service_period_from' => $activity->start_at->toDateString(),
                 'service_period_to' => $activity->end_at->toDateString(),
                 'status' => VoyageRevenueStatus::Confirmed,
@@ -176,6 +178,7 @@ class VoyageRevenueService
                 }
                 $revenue->fill($data);
                 $this->applyAmounts($revenue, $data);
+                $revenue->setAttribute('commission_amount', $commissionAmount);
                 $revenue->setAttribute('updated_by', $actor->id);
                 $revenue->save();
             } else {
@@ -183,6 +186,7 @@ class VoyageRevenueService
                 $revenue = new VoyageRevenue(['created_by' => $actor->id]);
                 $revenue->fill($data);
                 $this->applyAmounts($revenue, $data);
+                $revenue->setAttribute('commission_amount', $commissionAmount);
                 $revenue->setAttribute('updated_by', $actor->id);
                 $revenue->save();
             }
@@ -264,6 +268,39 @@ class VoyageRevenueService
     }
 
     /** F1: base_amount = round(amount × fx_rate_to_base, base_decimals). Snapshots FX at save time. */
+    /**
+     * Commission on activity revenue. The contract's address + brokerage + other commission applies to the billable time
+     * lines (day rate, hourly rate) when the revenue category is commissionable. Standby time and the mobilization /
+     * demobilization lump sums are not commissionable, as in the estimation (BR-EST-03).
+     *
+     * Returns the percentage over the WHOLE line (so that amount × pct matches the commission) and the exact commission.
+     *
+     * @return array{0: string, 1: string} [commission_pct_total, commission_amount]
+     */
+    private function activityCommission(OffshoreActivity $activity, ?RevenueCategory $category): array
+    {
+        $none = ['0', '0.00'];
+        $contract = $activity->contract_id ? Contract::query()->find($activity->contract_id) : null;
+        if (! $contract || ! $category?->getAttribute('is_commissionable') || $activity->revenue_amount === null || Decimal::cmp((string) $activity->revenue_amount, '0') <= 0) {
+            return $none;
+        }
+        $c = is_array($contract->commissions) ? $contract->commissions : [];
+        $total = Decimal::add(Decimal::add((string) ($c['address_pct'] ?? '0'), (string) ($c['brokerage_pct'] ?? '0')), (string) ($c['other_pct'] ?? '0'));
+        if (Decimal::cmp($total, '0') <= 0) {
+            return $none;
+        }
+        $base = '0';
+        foreach ($activity->rate_snapshot ?? [] as $line) {
+            if (($line['kind'] ?? null) === 'billable') {
+                $base = Decimal::add($base, (string) $line['amount']);
+            }
+        }
+        $commission = Decimal::round(Decimal::mul($base, Decimal::div($total, '100')), 2);
+        $pct = Decimal::round(Decimal::mul(Decimal::div($commission, (string) $activity->revenue_amount), '100'), 4);
+
+        return [$pct, $commission];
+    }
+
     private function applyAmounts(VoyageRevenue $revenue, array $data): void
     {
         $qty = $revenue->quantity;

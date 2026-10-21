@@ -6,6 +6,8 @@ use App\Enums\UserRole;
 use App\Models\BunkerStem;
 use App\Models\CaptainReport;
 use App\Models\CargoType;
+use App\Models\CiiFormulaSet;
+use App\Models\CiiVesselYear;
 use App\Models\Company;
 use App\Models\CompanyBankAccount;
 use App\Models\Contact;
@@ -53,6 +55,7 @@ use App\Models\VoyageMilestone;
 use App\Models\VoyageRevenue;
 use App\Policies\RolePolicy;
 use App\Services\Ais\AisProviderInterface;
+use App\Services\Ais\AisStreamProvider;
 use App\Services\Ais\ManualAisProvider;
 use App\Services\Ais\NullAisProvider;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -70,9 +73,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // AIS provider chosen by config (BR-AIS-01 is open: only none/manual exist). Tests may swap it with app()->instance().
+        // AIS provider chosen by config (BR-AIS-01 is open: none/manual/aisstream exist). Tests may swap it with app()->instance().
         $this->app->singleton(AisProviderInterface::class, fn () => match (config('offshore.ais.provider')) {
             'manual' => new ManualAisProvider,
+            'aisstream' => new AisStreamProvider,
             default => new NullAisProvider,
         });
     }
@@ -143,6 +147,8 @@ class AppServiceProvider extends ServiceProvider
             'payables' => Payable::class,
             'payments' => Payment::class,
             'payment-allocations' => PaymentAllocation::class,
+            'cii-formula-sets' => CiiFormulaSet::class,
+            'cii-vessel-years' => CiiVesselYear::class,
         ]);
     }
 

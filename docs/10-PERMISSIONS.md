@@ -23,7 +23,7 @@ Status: DRAFT v0.1. Reuses the Crew Management model: Spatie Permission, a `App\
 | finance | revenues.view/create/update, expenses.view/create/update/approve, invoices.view/create/update/submit/approve/issue/cancel/print/export, payments.view/create/allocate/reverse, payables.view/create/approve, balancing.view |
 | reports | reports.view, reports.export, statistics.view |
 | documents | documents.view/upload/delete (the parent entity's view permission is also required) |
-| ais / cii | ais.view, ais.manual-position, cii.view/calculate, cii.formulas.manage |
+| ais / cii | ais.view, ais.manual-position, cii.view, cii.manage |
 
 ## 2a. Seeded in phase 3
 

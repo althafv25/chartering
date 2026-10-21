@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Card, CardContent, Chip, DialogActions, DialogContent, Grid, IconButton, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Tooltip, Typography } from '@mui/material';
@@ -14,6 +14,7 @@ import { StatusChip } from '../../components/StatusChip';
 import { DocumentsPanel } from '../../components/DocumentsPanel';
 import { ErrorState, SectionLoader } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
+import { ConfirmedRevenuePicker, VoyageSelect } from '../../components/FinanceLinkPickers';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
 import { useNotify } from '../../hooks/useNotify';
@@ -35,6 +36,7 @@ export default function InvoiceDetailPage() {
   const [action, setAction] = useState<Action | null>(null);
   const [text, setText] = useState('');
   const [lineDialog, setLineDialog] = useState(false);
+  const [revenueDialog, setRevenueDialog] = useState(false);
 
   const inv = useQuery({ queryKey: ['invoices', id], queryFn: () => invoicesApi.get(id) });
   const invalidate = () => qc.invalidateQueries({ queryKey: ['invoices'] });
@@ -105,7 +107,10 @@ export default function InvoiceDetailPage() {
           <CardContent>
             {i.is_editable && can(P.InvoicesUpdate) && (
               <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1.5 }}>
-                <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => setLineDialog(true)}>Add line</Button>
+                <Stack direction="row" spacing={1}>
+                  <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => setRevenueDialog(true)}>Add voyage revenue</Button>
+                  <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => setLineDialog(true)}>Add line</Button>
+                </Stack>
               </Stack>
             )}
             <Table size="small">
@@ -156,6 +161,7 @@ export default function InvoiceDetailPage() {
         </DialogActions>
       </Dialog>
 
+      <AttachRevenueDialog open={revenueDialog} invoiceId={id} voyageId={i.voyage_id} currency={i.currency} onClose={() => setRevenueDialog(false)} onSaved={invalidate} />
       <AddLineDialog open={lineDialog} invoiceId={id} existing={lines} onClose={() => setLineDialog(false)} onSaved={invalidate} />
     </>
   );
@@ -193,6 +199,41 @@ function AddLineDialog({ open, invoiceId, existing, onClose, onSaved }: { open: 
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
         <LoadingButton variant="contained" loading={save.isPending} disabled={!f.description} onClick={() => save.mutate()}>Add</LoadingButton>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** Attaches confirmed, not yet invoiced voyage revenue as invoice lines (the revenue then becomes "invoiced"). */
+function AttachRevenueDialog({ open, invoiceId, voyageId, currency, onClose, onSaved }: {
+  open: boolean; invoiceId: number; voyageId: number | null; currency: string; onClose: () => void; onSaved: () => void;
+}) {
+  const notify = useNotify();
+  const qc = useQueryClient();
+  const [voyage, setVoyage] = useState<number | null>(voyageId);
+  const [ids, setIds] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { if (open) { setVoyage(voyageId); setIds([]); setError(null); } }, [open, voyageId]);
+  const attach = useMutation({
+    mutationFn: () => invoicesApi.attachRevenueLines(invoiceId, ids),
+    onSuccess: (r) => { notify.success(r.message); qc.invalidateQueries({ queryKey: ['voyage-revenues'] }); onSaved(); onClose(); },
+    onError: (e) => setError(errorMessage(e)),
+  });
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Add voyage revenue</DialogTitle>
+      <DialogContent dividers>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <Stack spacing={2}>
+          <VoyageSelect required value={voyage} disabled={voyageId !== null} onChange={(v) => { setVoyage(v?.id ?? null); setIds([]); }}
+            helperText={voyageId !== null ? 'This invoice is linked to the voyage.' : 'Choose the voyage whose revenue you are billing.'} />
+          <ConfirmedRevenuePicker voyageId={voyage} currency={currency} selected={ids} onChange={setIds} />
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <LoadingButton variant="contained" loading={attach.isPending} disabled={ids.length === 0} onClick={() => attach.mutate()}>Add to invoice</LoadingButton>
       </DialogActions>
     </Dialog>
   );

@@ -81,6 +81,12 @@ class Contract extends Model
         return $this->belongsTo(Fixture::class);
     }
 
+    /** @return HasMany<Voyage, $this> */
+    public function voyages(): HasMany
+    {
+        return $this->hasMany(Voyage::class)->orderByDesc('id');
+    }
+
     /** @return HasMany<ContractRate, $this> */
     public function rates(): HasMany
     {

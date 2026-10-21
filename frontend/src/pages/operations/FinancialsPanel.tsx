@@ -3,7 +3,7 @@ import { Box, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typograph
 import { voyageFinancialsApi } from '../../api/finance';
 import { ErrorState, SectionLoader } from '../../components/Feedback';
 import { KeyValueGrid } from '../../components/KeyValueGrid';
-import { isNegative, money, pct } from '../../utils/decimal';
+import { days, isNegative, money, pct } from '../../utils/decimal';
 
 /** Voyage P&L: estimate (initial snapshot) vs actual (confirmed ledger lines), base currency. */
 export function FinancialsPanel({ voyageId }: { voyageId: number }) {
@@ -32,7 +32,7 @@ export function FinancialsPanel({ voyageId }: { voyageId: number }) {
       <Box sx={{ mt: 2 }}>
         <KeyValueGrid columns={4} items={[
           ['Gross profit (before commission)', money(f.gross_profit, cur)], ['Net margin', pct(f.margin_pct)],
-          ['Voyage days', f.total_days], ['Net profit / day', money(f.profit_per_day, cur)],
+          ['Voyage days', f.total_days ? days(f.total_days, 2) : null], ['Net profit / day', money(f.profit_per_day, cur)],
         ]} />
       </Box>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} sx={{ mt: 3 }}>

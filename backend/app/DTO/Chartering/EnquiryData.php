@@ -27,7 +27,14 @@ final class EnquiryData
             $attrs['currency'] = strtoupper($attrs['currency']);
         }
 
-        return new self($attrs, array_key_exists('ports', $validated) ? array_values($validated['ports'] ?? []) : null,
+        // validated() fills `ports.*.port_id` rows before `ports.*.offshore_location_id` rows, so a port → location → port
+        // itinerary arrives as port, port, location. The array keys are the original row positions: restore that order.
+        $ports = $validated['ports'] ?? null;
+        if (is_array($ports)) {
+            ksort($ports);
+        }
+
+        return new self($attrs, array_key_exists('ports', $validated) ? array_values($ports ?? []) : null,
             isset($validated['lock_version']) ? (int) $validated['lock_version'] : null);
     }
 }

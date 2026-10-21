@@ -25,7 +25,7 @@ import { P } from '../../constants/permissions';
 import { RATE_BASES, labelOf } from '../../constants/chartering';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDate, formatDateTime, humanize } from '../../utils/format';
-import { groupDigits, isDecimal, trimZeros } from '../../utils/decimal';
+import { isDecimal, quantity as fmtQty, rate as fmtRate, trimZeros } from '../../utils/decimal';
 import type { Offer, OfferRevision } from '../../types/chartering';
 
 type Terms = { direction: 'outbound' | 'inbound'; rate: string; rate_basis: string; currency: string; quantity: string; laycan_from: string; laycan_to: string;
@@ -148,8 +148,8 @@ export default function OfferDetailPage() {
                     </Stack>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                       {[
-                        ['Rate', `${groupDigits(r.rate)} ${r.currency} ${labelOf(RATE_BASES, r.rate_basis)}`],
-                        ['Quantity', r.quantity ? `${groupDigits(r.quantity)} ${r.quantity_unit ?? ''}` : '—'],
+                        ['Rate', `${fmtRate(r.rate)} ${r.currency} ${labelOf(RATE_BASES, r.rate_basis)}`],
+                        ['Quantity', r.quantity ? `${fmtQty(r.quantity)} ${r.quantity_unit ?? ''}` : '—'],
                         ['Laycan', r.laycan_from ? `${formatDate(r.laycan_from)} – ${formatDate(r.laycan_to)}` : '—'],
                         ['Period', r.period_days ? `${trimZeros(r.period_days)} days` : '—'],
                         ['Commissions', `add ${trimZeros(r.commissions.address_pct)}% · bkg ${trimZeros(r.commissions.brokerage_pct)}% · other ${trimZeros(r.commissions.other_pct)}%`],

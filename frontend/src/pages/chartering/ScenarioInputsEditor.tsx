@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Box, Button, IconButton, MenuItem, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,15 +27,34 @@ const dayFields = [
   ['working_days', 'Working'], ['idle_days', 'Idle'], ['waiting_days', 'Waiting'], ['dp_days', 'DP'], ['standby_days', 'Standby'],
 ] as const;
 
-/** Small decimal input: value is kept as string; shows an error for malformed values (API validates authoritatively). */
+const isZeroString = (s: string) => s !== '' && /^0*(\.0*)?$/.test(s);
+
+/**
+ * Small decimal input: value is kept as string; shows an error for malformed values (API validates authoritatively).
+ *
+ * The text being typed is held locally. Several parents store "0" when the field is cleared, and echoing that back
+ * would leave a "0" in the box that the user could not delete. While the box is cleared the zero stays hidden; it is
+ * shown again on blur. Leading zeros ("05") are dropped as the user types and the content is selected on focus.
+ */
 function Dec({ label, value, onChange, scale = 4, disabled, width, required }: {
   label: string; value: string | null | undefined; onChange: (v: string | null) => void; scale?: number; disabled?: boolean; width?: number; required?: boolean;
 }) {
-  const v = value ?? '';
-  const bad = v !== '' && !isDecimal(v, scale);
+  const external = value ?? '';
+  const [text, setText] = useState(external);
+  useEffect(() => {
+    setText((current) => (current === external || (current === '' && isZeroString(external)) ? current : external));
+  }, [external]);
+  const bad = text !== '' && !isDecimal(text, scale);
   return (
-    <TextField size="small" label={label} value={v} disabled={disabled} required={required} inputMode="decimal" error={bad || (required && v === '')}
-      helperText={bad ? `max ${scale} decimals` : undefined} onChange={(e) => onChange(e.target.value.trim() === '' ? null : e.target.value.trim())}
+    <TextField size="small" label={label} value={text} disabled={disabled} required={required} inputMode="decimal" error={bad || (required && text === '')}
+      helperText={bad ? `max ${scale} decimals` : undefined}
+      onFocus={(e) => e.target.select()}
+      onBlur={() => setText(external)}
+      onChange={(e) => {
+        const next = e.target.value.trim().replace(/^0+(?=\d)/, '');
+        setText(next);
+        onChange(next === '' ? null : next);
+      }}
       sx={width ? { width } : undefined} />
   );
 }

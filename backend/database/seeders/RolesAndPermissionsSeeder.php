@@ -54,7 +54,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     P::UsersView, P::RolesView, P::SettingsView, P::AuditLogsView,
                     P::FinancialsView, P::CompaniesBankView, P::ContractsRatesView, P::ReportsExport,
                     P::EstimationsApprove, P::EstimationsReject, P::FixturesApprove, P::ContractsApprove,
-                    P::InvoicesApprove,
+                    P::InvoicesApprove, P::CiiView,
                 ],
                 UserRole::Chartering => [
                     ...$charteringRead, ...$charteringWork, ...$addressBook,
@@ -64,7 +64,7 @@ class RolesAndPermissionsSeeder extends Seeder
                     ...$charteringRead, ...$operationsWork, ...$addressBook,
                     P::VoyagesFinalize, P::VoyagesReopen, P::ContractsRatesView, P::ReportsExport, P::InvoicesView,
                     P::PortDaView, P::PortDaCreate, P::PortDaUpdate, P::PortDaApprove,
-                    P::LaytimeView, P::LaytimeCreate, P::LaytimeUpdate, P::LaytimeAgree,
+                    P::LaytimeView, P::LaytimeCreate, P::LaytimeUpdate, P::LaytimeAgree, P::CiiView,
                 ],
                 UserRole::Commercial => [
                     ...$charteringRead, ...$charteringWork, ...$financialRead, ...$addressBook,

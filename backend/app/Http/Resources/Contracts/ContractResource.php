@@ -65,6 +65,11 @@ class ContractResource extends JsonResource
                 'header' => $v->header_snapshot, 'created_at' => $v->created_at?->toIso8601String(),
             ])),
             'amendments' => $this->whenLoaded('amendments', fn () => $c->amendments->map(fn ($a) => (new AmendmentResource($a))->resolve($request))),
+            'voyages' => $this->whenLoaded('voyages', fn () => $c->voyages->map(fn ($v) => [
+                'id' => $v->id, 'voyage_number' => $v->voyage_number, 'status' => $v->status, 'operation_type' => $v->operation_type,
+                'vessel' => $v->relationLoaded('vessel') ? $v->vessel?->only(['id', 'code', 'name']) : null,
+                'commenced_at' => $v->commenced_at?->toIso8601String(), 'completed_at' => $v->completed_at?->toIso8601String(),
+            ])),
             'created_at' => $c->created_at?->toIso8601String(),
             'updated_at' => $c->updated_at?->toIso8601String(),
         ];

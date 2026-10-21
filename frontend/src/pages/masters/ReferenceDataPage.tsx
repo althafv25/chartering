@@ -117,7 +117,10 @@ function ItemDialog({ open, type, item, fields, onClose, onSaved }: {
   }, [open, item, fields]);
 
   const save = useMutation({
-    mutationFn: () => (item ? referenceApi.update(type, item.id, v) : referenceApi.create(type, v)),
+    mutationFn: () => {
+      const payload = { ...v, sort_order: v.sort_order ?? 0 };
+      return item ? referenceApi.update(type, item.id, payload) : referenceApi.create(type, payload);
+    },
     onSuccess: (r) => { notify.success(r.message); onSaved(); onClose(); },
     onError: (e: unknown) => { const fe = (e as { fieldErrors?: Record<string, string[]> }).fieldErrors ?? {}; setErrors(fe); if (!Object.keys(fe).length) notify.error(e); },
   });
@@ -145,7 +148,8 @@ function ItemDialog({ open, type, item, fields, onClose, onSaved }: {
               )}
             </Grid>
           ))}
-          <Grid size={{ xs: 6 }}><TextField label="Sort order" type="number" value={v.sort_order ?? 0} onChange={(e) => set('sort_order', Number(e.target.value))} /></Grid>
+          <Grid size={{ xs: 6 }}><TextField label="Sort order" type="number" value={v.sort_order ?? ''} onFocus={(e) => e.target.select()}
+            onChange={(e) => set('sort_order', e.target.value === '' ? null : Number(e.target.value))} /></Grid>
           <Grid size={{ xs: 6 }}>
             <TextField select label="Status" value={v.status ?? 'active'} onChange={(e) => set('status', e.target.value)}>
               <MenuItem value="active">Active</MenuItem><MenuItem value="inactive">Inactive</MenuItem>

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Chartering;
 
 use App\Enums\UserRole;
+use App\Models\OffshoreLocation;
 
 class EnquiryTest extends CharteringTestCase
 {
@@ -20,6 +21,27 @@ class EnquiryTest extends CharteringTestCase
             ->assertJsonPath('data.vessels.0.shortlist_status', 'candidate');
         $this->postJson("/api/v1/enquiries/{$id}/vessels", ['vessel_id' => $this->vessel->id, 'shortlist_status' => 'selected'])->assertOk()
             ->assertJsonPath('data.vessels.0.shortlist_status', 'selected');
+    }
+
+    /** A port → offshore location → port itinerary must keep the order the user entered (it defines the estimation legs). */
+    public function test_itinerary_mixing_ports_and_offshore_locations_keeps_its_order(): void
+    {
+        $field = OffshoreLocation::query()->create(['code' => 'ALPHA-1', 'name' => 'Alpha Field', 'latitude' => '25.5', 'longitude' => '55.2', 'timezone' => 'Asia/Dubai']);
+        $id = $this->enquiry(['business_type' => 'offshore_charter', 'ports' => [
+            ['port_id' => $this->ports[0], 'purpose' => 'load'],
+            ['offshore_location_id' => $field->id, 'purpose' => 'offshore_ops'],
+            ['port_id' => $this->ports[0], 'purpose' => 'redelivery'],
+        ]]);
+        $ports = $this->getJson("/api/v1/enquiries/{$id}")->assertOk()->json('data.ports');
+        $this->assertSame(['load', 'offshore_ops', 'redelivery'], array_column($ports, 'purpose'));
+        $this->assertSame([1, 2, 3], array_column($ports, 'sequence'));
+
+        $this->putJson("/api/v1/enquiries/{$id}", ['lock_version' => 0, 'ports' => [
+            ['offshore_location_id' => $field->id, 'purpose' => 'offshore_ops'],
+            ['port_id' => $this->ports[1], 'purpose' => 'discharge'],
+            ['offshore_location_id' => $field->id, 'purpose' => 'other'],
+        ]])->assertOk();
+        $this->assertSame(['offshore_ops', 'discharge', 'other'], array_column($this->getJson("/api/v1/enquiries/{$id}")->json('data.ports'), 'purpose'));
     }
 
     public function test_validation_and_optimistic_locking(): void

@@ -54,6 +54,14 @@ return [
 
     'ais' => [
         'provider' => env('AIS_PROVIDER', 'none'),
+        // aisstream.io (docs/09): the API key is a server-side secret — .env only, never sent to the
+        // frontend or stored in the database. Get a key at https://aisstream.io/authenticate after
+        // creating a free account. The ais:stream command subscribes with it over a WebSocket.
+        'aisstream_api_key' => env('AISSTREAM_API_KEY'),
+        // Optional global fallback area filter: "lat1,lon1,lat2,lon2" (two opposite corners). aisstream
+        // requires at least one bounding box; when the fleet has MMSIs we filter by vessel instead and
+        // use this box only as the required area argument (as wide as needed to cover all of them).
+        'aisstream_bounding_box' => env('AISSTREAM_BOUNDING_BOX', '-90,-180,90,180'),
     ],
 
     /** Requests per minute per user (per IP when signed out). Raised only for automated browser tests. */

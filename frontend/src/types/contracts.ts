@@ -77,5 +77,7 @@ export interface Contract {
   clauses?: ContractClause[];
   versions?: { version_no: number; effective_from: string; amendment_id: number | null; header: Record<string, unknown>; created_at: string }[];
   amendments?: Amendment[];
+  voyages?: { id: number; voyage_number: string; status: string; operation_type: string; vessel: { id: number; code: string; name: string } | null;
+    commenced_at: string | null; completed_at: string | null }[];
   created_at: string;
 }

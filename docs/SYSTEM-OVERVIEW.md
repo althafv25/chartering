@@ -1,6 +1,6 @@
 # Offshore Chartering & Vessel Operations System - Complete Overview
 
-**Last Updated:** 2026-10-04  
+**Last Updated:** 2026-10-10  
 **For:** New developers, testers, and system learners
 
 ---
@@ -46,7 +46,7 @@ This is a **maritime chartering and vessel operations management platform**. It 
 │                         FRONTEND LAYER                           │
 │  React 19 + TypeScript + Vite + Material-UI (SPA)               │
 │  http://localhost:5173 (development)                             │
-│  34 unit tests (100% passing)                                    │
+│  59 unit tests (Vitest), all passing                             │
 └─────────────────────────────────────────────────────────────────┘
                               ↕
                     (REST API via HTTP/JSON)
@@ -55,8 +55,8 @@ This is a **maritime chartering and vessel operations management platform**. It 
 │                        BACKEND LAYER                             │
 │  Laravel 12 + PHP 8.2 + REST API                                │
 │  http://localhost:8001 (development)                             │
-│  292 tests (121 passing / 41% pass rate)                        │
-│  Routes: 160+ API endpoints at /api/v1/*                        │
+│  333 PHPUnit tests, all passing                                  │
+│  Routes: 313 API endpoints at /api/v1/*                         │
 └─────────────────────────────────────────────────────────────────┘
                               ↕
                     (Eloquent ORM + Queries)
@@ -87,10 +87,10 @@ offshore/
 │   ├── database/
 │   │   ├── migrations/        # Database schema versions
 │   │   └── seeders/           # Test data generators
-│   ├── routes/api.php         # API endpoint definitions (160+ routes)
-│   ├── tests/                 # 292 test files
-│   │   ├── Unit/              # Business logic tests (68 passing)
-│   │   ├── Feature/           # API endpoint tests (53 passing)
+│   ├── routes/api.php         # API endpoint definitions (313 routes)
+│   ├── tests/                 # 333 tests
+│   │   ├── Unit/              # Calculators and helpers
+│   │   ├── Feature/           # API and workflow tests (incl. the two walkthrough tests)
 │   │   └── TestCase.php       # Test helpers
 │   └── phpstan.neon           # Static analysis config
 │
@@ -102,14 +102,13 @@ offshore/
 │   │   ├── types/             # TypeScript interfaces
 │   │   ├── api.ts             # HTTP client
 │   │   └── main.tsx           # App entry point
-│   ├── tests/                 # 34 unit tests (100% passing)
-│   ├── e2e/                   # Browser tests (2/10 passing)
+│   ├── src/**/*.test.tsx      # 59 Vitest tests (no browser/E2E suite at present)
 │   └── vite.config.ts         # Build configuration
 │
-├── docs/                       # Documentation (22 files)
-│   ├── 03-ARCHITECTURE.md     # System design
-│   ├── 04-DATABASE-SCHEMA.md  # Table definitions
-│   ├── 06-API.md              # API documentation
+├── docs/                       # Documentation (see docs/INDEX.md)
+│   ├── 02-SYSTEM-ARCHITECTURE.md  # System design
+│   ├── 05-DATABASE-DICTIONARY.md  # Table definitions
+│   ├── 06-API-SPECIFICATION.md    # API documentation
 │   ├── 07-BUSINESS-RULES.md   # Business logic rules
 │   ├── 12-DEPLOYMENT.md       # Production deployment
 │   ├── BACKUP-SETUP.md        # Backup procedures
@@ -403,8 +402,8 @@ You're now in the system as a SuperAdmin with full access.
 ### Week 1: Understand the System
 
 **Day 1-2: Read Documentation**
-- [ ] Read: `docs/03-ARCHITECTURE.md` (30 min)
-- [ ] Read: `docs/04-DATABASE-SCHEMA.md` (1 hour)
+- [ ] Read: `docs/02-SYSTEM-ARCHITECTURE.md` (30 min)
+- [ ] Read: `docs/05-DATABASE-DICTIONARY.md` (1 hour)
 - [ ] Read: `docs/07-BUSINESS-RULES.md` (1 hour)
 
 **Day 3-4: Explore the Database**
@@ -626,7 +625,7 @@ FAIL  Tests\Feature\Operations\VoyageTest
   ⨯ voyage completion calculates profit correctly
   Expected: $25,000, Got: $24,900
 
-Tests: 121 passed, 171 failed
+Tests: 332 passed, 1 failed   (illustrative output)
 ```
 
 ### Writing Your Own Test
@@ -942,13 +941,13 @@ curl -X POST http://localhost:8001/api/v1/vessels \
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| `backend/routes/api.php` | All API endpoints (160+ routes) | 243 |
+| `backend/routes/api.php` | All API endpoints (313 routes) | ~300 |
 | `backend/app/Models/Voyage.php` | Voyage database model | ~80 |
 | `backend/app/Services/Finance/InvoiceService.php` | Invoice business logic | ~500 |
 | `backend/tests/Feature/Admin/RoleManagementTest.php` | Admin test examples | ~80 |
 | `frontend/src/pages/DashboardPage.tsx` | Dashboard component | ~150 |
 | `frontend/src/api.ts` | HTTP client configuration | ~50 |
-| `docs/04-DATABASE-SCHEMA.md` | All 84 tables defined | ~400 |
+| `docs/05-DATABASE-DICTIONARY.md` | All tables defined | ~335 |
 | `docs/07-BUSINESS-RULES.md` | Business logic rules | ~600 |
 
 ---

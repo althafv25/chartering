@@ -37,6 +37,6 @@ cd backend  && php artisan test && ./vendor/bin/phpstan analyse && ./vendor/bin/
 cd frontend && npm run lint && npm run build && npm test
 ```
 
-**Status:** Phases 2–12 complete and tested (292 backend tests, 34 frontend tests). Phase 13 CII blocked on business approval. Phase 14 testing hardening in progress.
+**Status:** Phases 2–13 complete and tested (333 backend tests, 59 frontend tests). Phase 13 (CII) is built; the seeded formula set stays `draft` until Marine Operations confirms the figures in `docs/CII-REQUIREMENTS.md`. Phase 14 testing hardening in progress.
 
 Progress: `docs/13-DEVELOPMENT-PROGRESS.md`. Final status: `docs/14-FINAL-STATUS.md`. Decisions: `docs/14-DECISIONS.md`.

@@ -103,6 +103,35 @@ class PortDaTest extends OperationsTestCase
         $this->assertSame('350.00', $expenses[1]->amount);
     }
 
+    /** Several DA items can share one expense category (pilotage, towage and berth are all "Port charges"): none may be lost. */
+    public function test_final_da_items_in_the_same_expense_category_are_summed_into_one_expense(): void
+    {
+        $id = $this->sailingVoyage();
+        $call = $this->portCall($id);
+        $category = fn (string $code) => DaCostCategory::query()->where('code', $code)->value('id');
+        $da = $this->postJson('/api/v1/port-das', [
+            'port_call_id' => $call['id'], 'voyage_id' => $id, 'port_id' => $this->ports[0], 'currency' => 'USD', 'da_type' => 'final',
+        ])->assertCreated()->json('data');
+        $url = "/api/v1/port-das/{$da['id']}";
+        $this->postJson("{$url}/items", ['items' => [
+            ['da_cost_category_id' => $category('PILOT'), 'description' => 'Pilotage', 'actual_amount' => '2000.00'],
+            ['da_cost_category_id' => $category('TOWAGE'), 'description' => 'Towage', 'actual_amount' => '1200.00'],
+            ['da_cost_category_id' => $category('BERTH'), 'description' => 'Berth / dockage', 'actual_amount' => '1600.00'],
+            ['da_cost_category_id' => $category('AGENCY'), 'description' => 'Agency fee', 'actual_amount' => '600.00'],
+        ]])->assertOk();
+        $this->postJson("{$url}/submit")->assertOk();
+        $this->as($this->commercial)->postJson("{$url}/approve")->assertOk();
+
+        $expenses = VoyageExpense::query()->where('source_type', 'port-das')->where('source_id', $da['id'])->orderBy('id')->get();
+        $this->assertCount(2, $expenses);
+        $this->assertEqualsCanonicalizing(['600.00', '4800.00'], $expenses->pluck('amount')->all());
+        $this->assertSame('Port charges — Pilotage, Towage, Berth / dockage', $expenses->firstWhere('amount', '4800.00')->description);
+
+        // Syncing again (e.g. a retried approval) updates the same two lines instead of adding new ones.
+        app(VoyageExpenseService::class)->syncFromPortDa(PortDa::query()->findOrFail($da['id']), $this->commercial);
+        $this->assertSame(2, VoyageExpense::query()->where('source_type', 'port-das')->where('source_id', $da['id'])->count());
+    }
+
     /** DA-02: calling the sync again (e.g. on re-approval) updates the linked expense in place rather than duplicating it, and never touches a paid one. */
     public function test_resyncing_port_da_updates_expense_in_place_and_skips_paid(): void
     {

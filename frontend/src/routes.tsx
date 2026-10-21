@@ -54,6 +54,7 @@ const PayablesPage = lazy(() => import('./pages/commercial/PayablesPage'));
 const PayableDetailPage = lazy(() => import('./pages/commercial/PayableDetailPage'));
 const AgingReportPage = lazy(() => import('./pages/commercial/AgingReportPage'));
 const FleetMapPage = lazy(() => import('./pages/fleet/FleetMapPage'));
+const CiiPage = lazy(() => import('./pages/fleet/CiiPage'));
 const PortDasPage = lazy(() => import('./pages/operations/PortDasPage'));
 const PortDaDetailPage = lazy(() => import('./pages/operations/PortDaDetailPage'));
 const LaytimePage = lazy(() => import('./pages/operations/LaytimePage'));
@@ -123,6 +124,7 @@ export const router = createBrowserRouter([
         { path: 'fleet/vessels/:id', element: guarded(P.VesselsView, <VesselDetailPage />) },
         { path: 'fleet/vessels/:id/edit', element: guarded(P.VesselsUpdate, <VesselFormPage />) },
         { path: 'fleet/map', element: guarded(P.AisView, <FleetMapPage />) },
+        { path: 'fleet/cii', element: guarded(P.CiiView, <CiiPage />) },
         { path: 'fleet/status', element: guarded(P.VesselStatusView, <VesselStatusBoardPage />) },
         { path: 'masters/companies', element: guarded(P.CompaniesView, <CompaniesPage />) },
         { path: 'masters/companies/:id', element: guarded(P.CompaniesView, <CompanyDetailPage />) },

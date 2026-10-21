@@ -1,4 +1,4 @@
-import { days, groupDigits, isDecimal, isNegative, money, trimZeros } from './decimal';
+import { days, groupDigits, isDecimal, isNegative, money, quantity, rate, trimZeros } from './decimal';
 
 describe('decimal display helpers', () => {
   it('groups digits without float conversion', () => {
@@ -31,5 +31,21 @@ describe('decimal display helpers', () => {
     expect(isDecimal('12.345', 2)).toBe(false);
     expect(isDecimal('-1', 2)).toBe(false);
     expect(isDecimal('1e5', 2)).toBe(false);
+  });
+});
+
+describe('rate and quantity display', () => {
+  it('shows rates with at least two decimals and keeps significant precision', () => {
+    expect(rate('55.0000')).toBe('55.00');
+    expect(rate('4.6231')).toBe('4.6231');
+    expect(rate('1200')).toBe('1,200.00');
+    expect(rate('0.5000')).toBe('0.50');
+    expect(rate(null)).toBe('—');
+  });
+
+  it('drops trailing zeros from quantities', () => {
+    expect(quantity('2000.000')).toBe('2,000');
+    expect(quantity('2500.500')).toBe('2,500.5');
+    expect(quantity('')).toBe('—');
   });
 });

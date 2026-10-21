@@ -58,6 +58,7 @@ export const navigation: NavSection[] = [
       { label: 'Vessel Status', to: '/fleet/status', permission: P.VesselStatusView },
       { label: 'Vessel Performance', to: '/reports/vessel-performance', permission: P.ReportsView },
       { label: 'Fleet Map', to: '/fleet/map', permission: P.AisView, feature: 'ais' },
+      { label: 'CII (Carbon Intensity)', to: '/fleet/cii', permission: P.CiiView },
     ],
   },
   {

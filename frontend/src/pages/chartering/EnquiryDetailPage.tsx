@@ -21,7 +21,7 @@ import { P } from '../../constants/permissions';
 import { BUSINESS_TYPES, ENQUIRY_TRANSITIONS, ESTIMATION_TYPES, RATE_BASES, labelOf } from '../../constants/chartering';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDate, formatDateTime, humanize } from '../../utils/format';
-import { groupDigits, money } from '../../utils/decimal';
+import { money, quantity as fmtQty, rate as fmtRate } from '../../utils/decimal';
 import type { Estimation, Offer } from '../../types/chartering';
 import { EnquiryDialog } from './EnquiryDialog';
 import { NewEstimationDialog } from './NewEstimationDialog';
@@ -73,7 +73,7 @@ export default function EnquiryDetailPage() {
     { key: 'no', header: 'Offer', render: (o) => <Typography fontWeight={600} fontSize={14}>{o.offer_number}</Typography> },
     { key: 'vessel', header: 'Vessel', render: (o) => o.vessel?.name },
     { key: 'rev', header: 'Latest revision', render: (o) => (o.latest_revision ? `Rev ${o.latest_revision.revision_no} · ${humanize(o.latest_revision.direction)}` : '—') },
-    { key: 'rate', header: 'Rate', align: 'right', render: (o) => (o.latest_revision ? `${groupDigits(o.latest_revision.rate)} ${o.latest_revision.currency} ${labelOf(RATE_BASES, o.latest_revision.rate_basis)}` : '—') },
+    { key: 'rate', header: 'Rate', align: 'right', render: (o) => (o.latest_revision ? `${fmtRate(o.latest_revision.rate)} ${o.latest_revision.currency} ${labelOf(RATE_BASES, o.latest_revision.rate_basis)}` : '—') },
     { key: 'revstatus', header: 'Revision status', render: (o) => (o.latest_revision ? <StatusChip status={o.latest_revision.status} /> : '—') },
     { key: 'status', header: 'Offer', render: (o) => <StatusChip status={o.status} /> },
   ];
@@ -112,10 +112,10 @@ export default function EnquiryDetailPage() {
           <CardContent>
             <KeyValueGrid columns={4} items={[
               ['Received', formatDateTime(e.received_at)], ['Source', humanize(e.source)], ['Charterer', e.charterer?.legal_name], ['Broker', e.broker?.legal_name],
-              ['Cargo / service', e.cargo_description], ['Quantity', e.quantity ? `${groupDigits(e.quantity)} ${e.quantity_unit ?? ''}` : null],
+              ['Cargo / service', e.cargo_description], ['Quantity', e.quantity ? `${fmtQty(e.quantity)} ${e.quantity_unit ?? ''}` : null],
               ['Tolerance', e.quantity_tolerance_pct ? `${e.quantity_tolerance_pct} %` : null], ['Period', e.period_days ? `${e.period_days} days` : null],
               ['Laycan', e.laycan_from ? `${formatDate(e.laycan_from)} – ${formatDate(e.laycan_to)}` : null],
-              ['Rate idea', e.rate_idea ? `${groupDigits(e.rate_idea)} ${e.currency ?? ''} ${labelOf(RATE_BASES, e.rate_basis)}` : null],
+              ['Rate idea', e.rate_idea ? `${fmtRate(e.rate_idea)} ${e.currency ?? ''} ${labelOf(RATE_BASES, e.rate_basis)}` : null],
               ['Commission terms', e.commission_terms],
             ]} />
             <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>Itinerary</Typography>

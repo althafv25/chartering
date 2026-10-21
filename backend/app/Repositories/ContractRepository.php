@@ -8,7 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ContractRepository
 {
-    public const DETAIL = ['customer', 'vessel', 'fixture', 'submitter', 'decider', 'rates.activityType', 'clauses', 'versions', 'amendments.creator', 'amendments.decider'];
+    public const DETAIL = ['customer', 'vessel', 'fixture', 'submitter', 'decider', 'rates.activityType', 'clauses', 'versions', 'amendments.creator', 'amendments.decider', 'voyages.vessel'];
 
     /** @param array<string, mixed> $f */
     public function paginate(array $f, int $perPage): LengthAwarePaginator

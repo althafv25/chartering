@@ -293,10 +293,24 @@ GET  /ais/vessels/{id}/track?from=&to=&simplify=0.001   (max range 31 days per c
 GET  /ais/vessels/{id}/positions?from=&to=&page=
 POST /ais/positions/manual             (manual/verified position)
 GET  /ais/status                       provider health
-apiResource cii-formula-sets           POST /cii-formula-sets/{id}/verify
-GET  /vessels/{id}/cii?year=           POST /vessels/{id}/cii/{year}/calculate
-POST /estimations/{id}/scenarios/{sid}/cii-simulate
 ```
+
+### CII (Carbon Intensity Indicator) — implemented phase 13
+```
+GET  /cii/fleet-summary?reporting_year=   counts by rating A-E, fleet average ratio, at-risk (D/E) count  [cii.view]
+GET  /cii/formula-sets                    list formula sets (draft/verified/retired)                     [cii.view]
+POST /cii/formula-sets                    create (status always starts draft)                            [cii.manage]
+PUT  /cii/formula-sets/{id}                update (refused once verified/retired)                         [cii.manage]
+POST /cii/formula-sets/{id}/verify         draft → verified                                                [cii.manage]
+POST /cii/formula-sets/{id}/retire         verified → retired                                              [cii.manage]
+apiResource cii-vessel-years (except destroy)                                                              [cii.view | cii.manage]
+  unique per (vessel_id, reporting_year); lock_version optimistic concurrency
+POST /cii-vessel-years/{id}/calculate      runs Domain\Cii\CiiCalculator (pure, versioned); 422 cii_calculation_incomplete if a fuel/ship-type is unconfigured in the formula set [cii.manage]
+POST /cii-vessel-years/{id}/verify         calculated → verified; different user than the entry's creator/editor (self-approval blocked) [cii.manage]
+POST /cii-vessel-years/{id}/reopen         verified → calculated; reason required                          [cii.manage]
+```
+Formula: `attained = Σ(fuel_tonnes[i] × Cf[i] × 1000) / (capacity × distance_nm)`; `reference = a × capacity^(-c)`; `rating` from `attained/reference` against the formula set's boundaries (A/B/C/D/E). A seeded `imo-2023-draft` formula set ships with the published IMO MEPC.336/337/338(76) reference figures but stays `draft` until Marine Operations confirms fleet-specific ship-type coverage (see `docs/CII-REQUIREMENTS.md`).
+
 
 ### Documents
 ```

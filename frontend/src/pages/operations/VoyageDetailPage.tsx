@@ -16,7 +16,7 @@ import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDateTime, humanize, zoneLabel } from '../../utils/format';
-import { money } from '../../utils/decimal';
+import { days, money } from '../../utils/decimal';
 import { PortCallsPanel } from './PortCallsPanel';
 import { MilestonesPanel } from './MilestonesPanel';
 import { OffHirePanel } from './OffHirePanel';
@@ -113,7 +113,7 @@ export default function VoyageDetailPage() {
             <KeyValueGrid columns={4} items={[
               ['Commenced', formatDateTime(voyage.commenced_at)], ['Completed', formatDateTime(voyage.completed_at)], ['Last status change', formatDateTime(voyage.status_changed_at)],
               ['Next call', voyage.next_port_call ? voyage.next_port_call.label : null],
-              ['Estimated days', results.total_days ?? null], ['Estimated revenue', money(results.gross_revenue ?? null, voyage.currency)],
+              ['Estimated days', results.total_days ? days(results.total_days, 2) : null], ['Estimated revenue', money(results.gross_revenue ?? null, voyage.currency)],
               ['Estimated profit', money(results.profit ?? null, voyage.currency)], ['Estimated TCE / day', money(results.tce_per_day ?? null, voyage.currency)],
               ['Initial snapshot', initial ? `${formatDateTime(initial.created_at)}${initial.calculation_version ? ` · engine v${initial.calculation_version}` : ''}` : null],
               ['Snapshots', String(voyage.snapshots?.length ?? 0)], ['Status note', voyage.status_reason],

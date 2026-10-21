@@ -13,6 +13,7 @@ import { StatusChip } from '../../components/StatusChip';
 import { ErrorState } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
 import { CompanyAutocomplete, CurrencySelect } from '../../components/MasterPickers';
+import { ConfirmedRevenuePicker, VoyageSelect } from '../../components/FinanceLinkPickers';
 import { Can } from '../../auth/guards';
 import { P } from '../../constants/permissions';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -70,12 +71,16 @@ export default function InvoicesPage() {
 function NewInvoiceDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (i: Invoice) => void }) {
   const qc = useQueryClient();
   const notify = useNotify();
-  const blank = { invoice_type: 'freight', customer_company_id: null as number | null, issue_date: '', due_date: '', currency: 'USD' as string | null };
+  const blank = { invoice_type: 'freight', customer_company_id: null as number | null, voyage_id: null as number | null, contract_id: null as number | null,
+    issue_date: '', due_date: '', currency: 'USD' as string | null };
   const [f, setF] = useState(blank);
+  const [revenueIds, setRevenueIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const create = useMutation({
-    mutationFn: () => invoicesApi.create(f),
-    onSuccess: (r) => { notify.success(r.message); qc.invalidateQueries({ queryKey: ['invoices'] }); setF(blank); onCreated(r.data); },
+    mutationFn: () => invoicesApi.create({
+      ...f, voyage_id: f.voyage_id ?? undefined, contract_id: f.contract_id ?? undefined, revenue_ids: revenueIds.length ? revenueIds : undefined,
+    }),
+    onSuccess: (r) => { notify.success(r.message); qc.invalidateQueries({ queryKey: ['invoices'] }); qc.invalidateQueries({ queryKey: ['voyage-revenues'] }); setF(blank); setRevenueIds([]); onCreated(r.data); },
     onError: (e) => setError(errorMessage(e)),
   });
 
@@ -85,6 +90,15 @@ function NewInvoiceDialog({ open, onClose, onCreated }: { open: boolean; onClose
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>
+          <Grid size={12}>
+            <VoyageSelect value={f.voyage_id}
+              onChange={(v) => {
+                setRevenueIds([]);
+                setF({ ...f, voyage_id: v?.id ?? null, contract_id: v?.contract_id ?? null,
+                  customer_company_id: v?.charterer_company_id ?? f.customer_company_id, currency: v?.currency ?? f.currency });
+              }}
+              helperText="Choose the voyage to bill. Customer and currency are filled in from it." />
+          </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField select label="Type" value={f.invoice_type} onChange={(e) => setF({ ...f, invoice_type: e.target.value })}>
               {TYPES.filter((t) => t !== 'credit_note').map((t) => <MenuItem key={t} value={t}>{t.replace(/_/g, ' ')}</MenuItem>)}
@@ -95,7 +109,10 @@ function NewInvoiceDialog({ open, onClose, onCreated }: { open: boolean; onClose
           <Grid size={6}><TextField type="date" label="Issue date" required value={f.issue_date} onChange={(e) => setF({ ...f, issue_date: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} /></Grid>
           <Grid size={6}><TextField type="date" label="Due date" required value={f.due_date} onChange={(e) => setF({ ...f, due_date: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} /></Grid>
         </Grid>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Lines are added on the invoice page while it is a draft.</Typography>
+        {f.voyage_id && <Box sx={{ mt: 2 }}><ConfirmedRevenuePicker voyageId={f.voyage_id} currency={f.currency} selected={revenueIds} onChange={setRevenueIds} /></Box>}
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          Ticked revenue becomes invoice lines and is marked as invoiced. Other lines can be added on the invoice page while it is a draft.
+        </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose}>Cancel</Button>

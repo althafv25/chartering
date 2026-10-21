@@ -29,7 +29,13 @@ export default function SettingsPage() {
   }, [settings.data]);
 
   const save = useMutation({
-    mutationFn: () => settingsApi.update(values),
+    mutationFn: () => {
+      // A cleared number box is kept blank while editing; saving it keeps the stored value instead of sending 0.
+      const stored: Record<string, SettingValue> = {};
+      Object.values(settings.data ?? {}).forEach((g) => Object.entries(g).forEach(([k, s]) => { stored[k] = s.value; }));
+      const payload = Object.fromEntries(Object.entries(values).map(([k, val]) => [k, val === '' && typeof stored[k] === 'number' ? stored[k] : val]));
+      return settingsApi.update(payload);
+    },
     onSuccess: (res) => { notify.success(res.message); qc.setQueryData<SettingsGroups>(['settings'], res.data); },
     onError: (e) => notify.error(e),
   });
@@ -72,7 +78,7 @@ export default function SettingsPage() {
                         type={def.type === 'int' ? 'number' : 'text'}
                         value={values[key] ?? ''}
                         disabled={!editable}
-                        onChange={(e) => setValues((v) => ({ ...v, [key]: def.type === 'int' ? Number(e.target.value) : e.target.value }))}
+                        onChange={(e) => setValues((v) => ({ ...v, [key]: def.type === 'int' && e.target.value !== '' ? Number(e.target.value) : e.target.value }))}
                       />
                     )}
                   </Grid>

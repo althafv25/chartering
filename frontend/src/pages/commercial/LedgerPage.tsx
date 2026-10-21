@@ -14,10 +14,11 @@ import { LoadingButton } from '../../components/LoadingButton';
 import { Can } from '../../auth/guards';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
-import { ReferenceSelect, CurrencySelect } from '../../components/MasterPickers';
+import { ReferenceSelect, CurrencySelect, CompanyAutocomplete } from '../../components/MasterPickers';
+import { VoyageSelect } from '../../components/FinanceLinkPickers';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useNotify } from '../../hooks/useNotify';
-import { money } from '../../utils/decimal';
+import { isDecimal, money } from '../../utils/decimal';
 import type { VoyageExpense, VoyageRevenue } from '../../types/finance';
 
 type Kind = 'revenue' | 'expense';
@@ -104,11 +105,16 @@ function RevenueTable() {
 
 function NewRevenueDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const notify = useNotify();
-  const blank = { revenue_category_id: null as number | null, description: '', quantity: '', rate: '', amount: '', currency: 'USD' as string | null, remarks: '' };
+  const blank = { voyage_id: null as number | null, contract_id: null as number | null, revenue_category_id: null as number | null, description: '', quantity: '', rate: '', amount: '',
+    commission_pct_total: '', currency: 'USD' as string | null, remarks: '' };
   const [f, setF] = useState(blank);
   const [error, setError] = useState<string | null>(null);
+  const badCommission = f.commission_pct_total !== '' && !isDecimal(f.commission_pct_total, 4);
   const create = useMutation({
-    mutationFn: () => voyageRevenuesApi.create({ ...f, quantity: f.quantity || undefined, rate: f.rate || undefined, amount: f.amount || undefined }),
+    mutationFn: () => voyageRevenuesApi.create({
+      ...f, voyage_id: f.voyage_id ?? undefined, contract_id: f.contract_id ?? undefined, quantity: f.quantity || undefined, rate: f.rate || undefined,
+      amount: f.amount || undefined, commission_pct_total: f.commission_pct_total || undefined,
+    }),
     onSuccess: (r) => { notify.success(r.message); setF(blank); onCreated(); onClose(); },
     onError: (e) => setError(errorMessage(e)),
   });
@@ -119,18 +125,26 @@ function NewRevenueDialog({ open, onClose, onCreated }: { open: boolean; onClose
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>
+          <Grid size={12}>
+            <VoyageSelect value={f.voyage_id} onChange={(v) => setF({ ...f, voyage_id: v?.id ?? null, contract_id: v?.contract_id ?? null, currency: v?.currency ?? f.currency })}
+              helperText="Only revenue linked to a voyage counts in its P&L and can be invoiced against it." />
+          </Grid>
           <Grid size={12}><ReferenceSelect type="revenue-categories" label="Category" required value={f.revenue_category_id} onChange={(id) => setF({ ...f, revenue_category_id: id })} /></Grid>
           <Grid size={12}><TextField label="Description" required value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Grid>
           <Grid size={{ xs: 6, sm: 3 }}><TextField label="Quantity" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Grid>
           <Grid size={{ xs: 6, sm: 3 }}><TextField label="Rate" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} /></Grid>
           <Grid size={{ xs: 12, sm: 3 }}><TextField label="Amount (override)" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} helperText="Leave blank to use qty × rate" /></Grid>
           <Grid size={{ xs: 12, sm: 3 }}><CurrencySelect label="Currency" required value={f.currency} onChange={(v) => setF({ ...f, currency: v })} /></Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField label="Commission % (total)" value={f.commission_pct_total} error={badCommission} onChange={(e) => setF({ ...f, commission_pct_total: e.target.value.trim() })}
+              helperText={badCommission ? 'Up to 4 decimals' : 'e.g. 5 for 2.5% address + 2.5% brokerage. Leave blank for none'} />
+          </Grid>
           <Grid size={12}><TextField label="Remarks" multiline minRows={2} value={f.remarks} onChange={(e) => setF({ ...f, remarks: e.target.value })} /></Grid>
         </Grid>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <LoadingButton variant="contained" loading={create.isPending} disabled={!f.revenue_category_id || !f.description || !f.currency} onClick={() => create.mutate()}>Create</LoadingButton>
+        <LoadingButton variant="contained" loading={create.isPending} disabled={!f.revenue_category_id || !f.description || !f.currency || badCommission} onClick={() => create.mutate()}>Create</LoadingButton>
       </DialogActions>
     </Dialog>
   );
@@ -205,11 +219,15 @@ function ExpenseTable() {
 
 function NewExpenseDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const notify = useNotify();
-  const blank = { expense_category_id: null as number | null, description: '', quantity: '', rate: '', amount: '', currency: 'USD' as string | null, remarks: '' };
+  const blank = { voyage_id: null as number | null, contract_id: null as number | null, expense_category_id: null as number | null, description: '', quantity: '', rate: '', amount: '',
+    currency: 'USD' as string | null, supplier_company_id: null as number | null, incurred_at: '', remarks: '' };
   const [f, setF] = useState(blank);
   const [error, setError] = useState<string | null>(null);
   const create = useMutation({
-    mutationFn: () => voyageExpensesApi.create({ ...f, quantity: f.quantity || undefined, rate: f.rate || undefined, amount: f.amount || undefined }),
+    mutationFn: () => voyageExpensesApi.create({
+      ...f, voyage_id: f.voyage_id ?? undefined, contract_id: f.contract_id ?? undefined, supplier_company_id: f.supplier_company_id ?? undefined,
+      incurred_at: f.incurred_at || undefined, quantity: f.quantity || undefined, rate: f.rate || undefined, amount: f.amount || undefined,
+    }),
     onSuccess: (r) => { notify.success(r.message); setF(blank); onCreated(); onClose(); },
     onError: (e) => setError(errorMessage(e)),
   });
@@ -220,12 +238,18 @@ function NewExpenseDialog({ open, onClose, onCreated }: { open: boolean; onClose
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>
+          <Grid size={12}>
+            <VoyageSelect value={f.voyage_id} onChange={(v) => setF({ ...f, voyage_id: v?.id ?? null, contract_id: v?.contract_id ?? null, currency: v?.currency ?? f.currency })}
+              helperText="Only expenses linked to a voyage count in its P&L." />
+          </Grid>
           <Grid size={12}><ReferenceSelect type="expense-categories" label="Category" required value={f.expense_category_id} onChange={(id) => setF({ ...f, expense_category_id: id })} /></Grid>
           <Grid size={12}><TextField label="Description" required value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Grid>
           <Grid size={{ xs: 6, sm: 3 }}><TextField label="Quantity" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Grid>
           <Grid size={{ xs: 6, sm: 3 }}><TextField label="Rate" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} /></Grid>
           <Grid size={{ xs: 12, sm: 3 }}><TextField label="Amount (override)" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} helperText="Leave blank to use qty × rate" /></Grid>
           <Grid size={{ xs: 12, sm: 3 }}><CurrencySelect label="Currency" required value={f.currency} onChange={(v) => setF({ ...f, currency: v })} /></Grid>
+          <Grid size={{ xs: 12, sm: 8 }}><CompanyAutocomplete label="Supplier (optional)" role="supplier" value={f.supplier_company_id} onChange={(id) => setF({ ...f, supplier_company_id: id })} /></Grid>
+          <Grid size={{ xs: 12, sm: 4 }}><TextField type="date" label="Incurred on" value={f.incurred_at} onChange={(e) => setF({ ...f, incurred_at: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} /></Grid>
           <Grid size={12}><TextField label="Remarks" multiline minRows={2} value={f.remarks} onChange={(e) => setF({ ...f, remarks: e.target.value })} /></Grid>
         </Grid>
       </DialogContent>

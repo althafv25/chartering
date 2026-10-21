@@ -7,6 +7,7 @@ use App\Models\ContractAmendment;
 use App\Models\OffshoreActivityType;
 use App\Models\OffshoreLocation;
 use App\Models\User;
+use App\Models\VoyageRevenue;
 use App\Services\SettingsService;
 
 class OffshoreActivityTest extends OperationsTestCase
@@ -70,6 +71,46 @@ class OffshoreActivityTest extends OperationsTestCase
         $this->assertSame($this->client->id, $a['client']['id']);
         $this->assertSame('2026-10-10T02:00:00+00:00', $a['start_at']);
         $this->assertMatchesRegularExpression('/^OA-2026-\d{5}$/', $a['activity_number']);
+    }
+
+    /** The contract's commission applies to billable time only (day / hourly rate), not to standby or mob/demob lump sums. */
+    public function test_verified_activity_revenue_carries_the_contract_commission_on_billable_time_only(): void
+    {
+        $c = $this->as($this->charterer)->postJson('/api/v1/contracts', [
+            'contract_type' => 'offshore_charter', 'title' => 'Commissioned', 'customer_company_id' => $this->client->id, 'vessel_id' => $this->vessel->id,
+            'currency' => 'USD', 'start_date' => '2026-10-01', 'end_date' => '2027-03-31', 'commissions' => ['address_pct' => '2.5', 'brokerage_pct' => '1.25', 'other_pct' => '0'],
+            'rates' => [
+                ['rate_type' => 'day_rate', 'amount' => '14500', 'currency' => 'USD', 'unit' => 'per_day'],
+                ['rate_type' => 'standby_day_rate', 'amount' => '9000', 'currency' => 'USD', 'unit' => 'per_day'],
+                ['rate_type' => 'mobilization_fee', 'amount' => '25000', 'currency' => 'USD', 'unit' => 'lump_sum'],
+            ],
+        ])->assertCreated()->json('data.id');
+        $this->postJson("/api/v1/contracts/{$c}/submit")->assertOk();
+        $this->as($this->manager)->postJson("/api/v1/contracts/{$c}/approve")->assertOk();
+        $this->as($this->charterer)->postJson("/api/v1/contracts/{$c}/activate")->assertOk();
+        $this->as($this->ops);
+        $revenue = function (array $data) use ($c): array {
+            $a = $this->postJson('/api/v1/offshore-activities', ['vessel_id' => $this->vessel->id, 'contract_id' => $c, 'offshore_activity_type_id' => $this->type('SUPPLY'), ...$data])
+                ->assertCreated()->json('data');
+            $this->postJson("/api/v1/offshore-activities/{$a['id']}/submit")->assertOk();
+            $this->as($this->ops2)->postJson("/api/v1/offshore-activities/{$a['id']}/verify")->assertOk();
+            $this->as($this->ops);
+
+            return VoyageRevenue::query()->where('offshore_activity_id', $a['id'])->firstOrFail()->only(['amount', 'commission_pct_total', 'commission_amount']);
+        };
+
+        // 30 h billable (18,125.00) + 6 h standby (2,250.00): commission 3.75 % of the billable 18,125.00 only = 679.69
+        $mixed = $revenue(['start_at' => '2026-10-10T06:00', 'end_at' => '2026-10-11T18:00', 'billable_hours' => '30', 'standby_hours' => '6']);
+        $this->assertSame(['20375.00', '679.69'], [$mixed['amount'], $mixed['commission_amount']]);
+        $this->assertSame('3.3359', $mixed['commission_pct_total']);
+
+        // Pure day-rate work carries the full contract percentage.
+        $day = $revenue(['start_at' => '2026-10-12T00:00', 'end_at' => '2026-10-14T00:00', 'billable_hours' => '48']);
+        $this->assertSame(['29000.00', '3.7500', '1087.50'], [$day['amount'], $day['commission_pct_total'], $day['commission_amount']]);
+
+        // A mobilization lump sum is not commissionable.
+        $mob = $revenue(['offshore_activity_type_id' => $this->type('MOB'), 'start_at' => '2026-10-15T00:00', 'end_at' => '2026-10-15T12:00', 'billable_hours' => '0', 'non_billable_hours' => '12']);
+        $this->assertSame(['25000.00', '0.0000', '0.00'], [$mob['amount'], $mob['commission_pct_total'], $mob['commission_amount']]);
     }
 
     public function test_hours_overlap_and_time_validation(): void

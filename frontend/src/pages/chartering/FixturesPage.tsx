@@ -10,7 +10,7 @@ import { StatusChip } from '../../components/StatusChip';
 import { BUSINESS_TYPES, RATE_BASES, labelOf } from '../../constants/chartering';
 import { useDebounce } from '../../hooks/useDebounce';
 import { formatDate } from '../../utils/format';
-import { groupDigits } from '../../utils/decimal';
+import { rate as fmtRate } from '../../utils/decimal';
 import type { Fixture } from '../../types/chartering';
 
 export default function FixturesPage() {
@@ -26,7 +26,7 @@ export default function FixturesPage() {
     { key: 'vessel', header: 'Vessel', render: (f) => f.vessel?.name },
     { key: 'cp', header: 'Charterer', render: (f) => f.charterer?.legal_name ?? '—' },
     { key: 'type', header: 'Type', hideBelow: 'md', render: (f) => labelOf(BUSINESS_TYPES, f.business_type) },
-    { key: 'rate', header: 'Rate', align: 'right', render: (f) => `${groupDigits(f.rate)} ${f.currency} ${labelOf(RATE_BASES, f.rate_basis)}` },
+    { key: 'rate', header: 'Rate', align: 'right', render: (f) => `${fmtRate(f.rate)} ${f.currency} ${labelOf(RATE_BASES, f.rate_basis)}` },
     { key: 'status', header: 'Status', render: (f) => <StatusChip status={f.status} /> },
   ];
   return (

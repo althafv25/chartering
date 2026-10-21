@@ -75,7 +75,7 @@ class FixtureController extends Controller
         $this->authorize('view', $fixture);
         $this->authorize('create', Contract::class);
         [$contract, $created] = $conversion->toContract($fixture, $request->user());
-        $res = new ContractResource($contract->load(['customer', 'vessel', 'fixture']));
+        $res = new ContractResource($contract->load(['customer', 'vessel', 'fixture', 'voyages.vessel']));
 
         return $created ? $this->created($res, "Contract {$contract->contract_number} created.") : $this->ok($res, 'A contract already exists for this fixture.');
     }

@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             DocumentTypeSeeder::class,
             ReferenceDataSeeder::class,
+            CiiFormulaSetSeeder::class,
             AdminUserSeeder::class,
             InitialDemoDataSeeder::class,
         ]);

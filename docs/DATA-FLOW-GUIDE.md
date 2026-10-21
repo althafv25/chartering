@@ -269,7 +269,7 @@ Examples include actual freight, hire, service revenue, port charges, fuel suppl
 
 **Passed forward:** Confirmed revenue can be attached to an invoice. Confirmed/approved expenses contribute to voyage P&L. Draft and cancelled lines do not contribute to actual voyage P&L.
 
-**Current form coverage:** The manual New revenue/New expense drawers do not expose voyage or contract selectors. A line created there is not linked to a voyage simply because its description mentions the voyage number. Use an operational source that supplies the link, or the API's `voyage_id` / `contract_id` fields for linked manual entries. See the [linked-finance example](DATA-FLOW-REFERENCE.md#5-linked-finance-example) in the reference.
+**Linking to a voyage:** the New revenue and New expense drawers have a **Voyage** selector (it also fills the contract and currency). Revenue also takes a **Commission % (total)** and expenses an optional supplier and incurred date. A line left on "Not linked to a voyage" never reaches a voyage P&L.
 
 ### Step 9 — Bill the customer
 
@@ -284,7 +284,7 @@ Examples include actual freight, hire, service revenue, port charges, fuel suppl
 
 **Linked flow:** The API can create a voyage/contract-linked invoice and attach confirmed revenue IDs. Attaching a revenue line marks it Invoiced, even while the invoice is still a draft; the line is reserved against duplicate billing.
 
-**Current form coverage:** The New invoice drawer does not expose voyage/contract selectors, and Add line does not expose a confirmed-revenue picker. Manual invoice lines alone do not create or invoice a voyage revenue ledger entry. Use the API for the linked flow; do not expect the manual UI invoice alone to populate voyage P&L or clear a confirmed-revenue finalization gate.
+**Billing voyage revenue:** the New invoice drawer has a **Voyage** selector that fills the customer and currency and lists the voyage's confirmed revenue as a checklist; ticked lines become invoice lines and are marked Invoiced. On a draft invoice, **Add voyage revenue** attaches more. Revenue in another currency than the invoice cannot be attached. Manual invoice lines alone do not create or invoice a voyage revenue ledger entry.
 
 ### Step 10 — Record supplier bills
 
@@ -294,7 +294,7 @@ Examples include actual freight, hire, service revenue, port charges, fuel suppl
 2. Approve the payable.
 3. When a payable has a voyage link, approval creates/updates its sourced voyage expense with Approved status.
 
-**Current form coverage:** New payable does not expose a voyage selector. Include `voyage_id` through the API for the voyage-linked cost/P&L handoff.
+**Voyage link:** New payable has a **Voyage** selector. When set, approval books the payable total (including tax) as an approved expense on that voyage; leave it empty if the same cost is already in the ledger.
 
 Port DA expenses and payable-sourced expenses have different sources. The application does not automatically match a supplier payable to an existing Port DA expense; check the ledger when representing the same cost through multiple sources.
 

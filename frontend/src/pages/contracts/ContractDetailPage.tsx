@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import LockOutlined from '@mui/icons-material/LockOutlined';
-import { contractsApi } from '../../api/contracts';
+import { contractsApi, fixtureLifecycleApi } from '../../api/contracts';
 import { ApiError } from '../../api/client';
 import { PageHeader } from '../../components/PageHeader';
 import { KeyValueGrid } from '../../components/KeyValueGrid';
@@ -23,7 +23,7 @@ import { CONTRACT_TYPES, RATE_TYPES } from '../../constants/contracts';
 import { labelOf } from '../../constants/chartering';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDate, formatDateTime, humanize } from '../../utils/format';
-import { groupDigits, trimZeros } from '../../utils/decimal';
+import { rate as fmtRate, trimZeros } from '../../utils/decimal';
 import type { Contract, ContractClause, ContractRate } from '../../types/contracts';
 import { ClausesEditor, RatesEditor } from './TermsEditors';
 import { AmendmentsPanel } from './AmendmentsPanel';
@@ -50,6 +50,12 @@ export default function ContractDetailPage() {
     onError: (e) => notify.error(e),
   });
 
+  const toVoyage = useMutation({
+    mutationFn: (fixtureId: number) => fixtureLifecycleApi.toVoyage(fixtureId),
+    onSuccess: (r) => { notify.success(r.message); refresh(); qc.invalidateQueries({ queryKey: ['voyages'] }); navigate(`/operations/voyages/${r.data.id}`); },
+    onError: (e) => notify.error(e),
+  });
+
   if (contract.isLoading) return <SectionLoader />;
   if (contract.isError || !contract.data) return <ErrorState error={contract.error} onRetry={() => contract.refetch()} />;
   const c = contract.data;
@@ -61,6 +67,9 @@ export default function ContractDetailPage() {
         breadcrumbs={[{ label: 'Contracts', to: '/contracts' }, { label: c.contract_number }]}
         actions={<>
           {can(P.ContractsRatesView) && <PdfDocumentButton parentType="contracts" parentId={id} permission={P.ContractsUpdate} generate={() => contractsApi.generatePdf(id)} />}
+          {c.fixture && !c.voyages?.length && !['cancelled', 'expired'].includes(c.status) && can(P.VoyagesCreate) && (
+            <LoadingButton variant="outlined" loading={toVoyage.isPending} onClick={() => toVoyage.mutate(c.fixture!.id)}>Create voyage</LoadingButton>
+          )}
           {c.status === 'draft' && btn('submit', 'Submit for review', P.ContractsSubmit, { variant: 'contained' })}
           {c.status === 'under_review' && btn('reject', 'Return to draft', P.ContractsApprove, { color: 'error' })}
           {c.status === 'under_review' && btn('approve', 'Approve', P.ContractsApprove, { variant: 'contained', color: 'success' })}
@@ -82,6 +91,7 @@ export default function ContractDetailPage() {
           <Tab value="overview" label="Overview" />
           {c.rates_visible && <Tab value="rates" label="Rates" />}
           <Tab value="clauses" label="Clauses" />
+          <Tab value="voyages" label={`Voyages (${c.voyages?.length ?? 0})`} />
           <Tab value="amendments" label={`Amendments (${c.amendments?.length ?? 0})`} />
           <Tab value="versions" label={`Versions (${c.versions?.length ?? 0})`} />
           <Tab value="documents" label="Documents" />
@@ -90,6 +100,7 @@ export default function ContractDetailPage() {
         {tab === 'overview' && <OverviewTab contract={c} onSaved={refresh} />}
         {tab === 'rates' && c.rates_visible && <RatesTab contract={c} onSaved={refresh} />}
         {tab === 'clauses' && <ClausesTab contract={c} onSaved={refresh} />}
+        {tab === 'voyages' && <VoyagesTab contract={c} />}
         {tab === 'amendments' && <AmendmentsPanel contract={c} />}
         {tab === 'versions' && <VersionsTab contract={c} />}
         {tab === 'documents' && <DocumentsPanel parentType="contracts" parentId={id} canEdit={can(P.ContractsUpdate)} />}
@@ -216,7 +227,7 @@ function RateTable({ rates }: { rates: ContractRate[] }) {
           <TableRow key={r.id ?? i}>
             <TableCell>{labelOf(RATE_TYPES, r.rate_type)}</TableCell>
             <TableCell>{r.description ?? '—'}</TableCell>
-            <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{groupDigits(r.amount)} {r.currency}</TableCell>
+            <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{fmtRate(r.amount)} {r.currency}</TableCell>
             <TableCell>{humanize(r.unit)}</TableCell>
             <TableCell>{r.effective_from || r.effective_to ? `${formatDate(r.effective_from)} – ${formatDate(r.effective_to)}` : 'Whole contract'}</TableCell>
           </TableRow>
@@ -254,6 +265,38 @@ function ClausesTab({ contract: c, onSaved }: { contract: Contract; onSaved: () 
           <Typography fontSize={14} whiteSpace="pre-wrap">{x.body}</Typography>
         </Box>
       ))}
+    </CardContent>
+  );
+}
+
+function VoyagesTab({ contract: c }: { contract: Contract }) {
+  const navigate = useNavigate();
+  const { can } = useAuth();
+  const voyages = c.voyages ?? [];
+  return (
+    <CardContent>
+      {voyages.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          No voyage is linked to this contract yet.{c.fixture ? ` Use Create voyage at the top of this page.` : ''}
+        </Typography>
+      ) : (
+        <Table size="small">
+          <TableHead><TableRow><TableCell>Voyage</TableCell><TableCell>Vessel</TableCell><TableCell>Type</TableCell><TableCell>Status</TableCell><TableCell>Commenced</TableCell><TableCell>Completed</TableCell></TableRow></TableHead>
+          <TableBody>
+            {voyages.map((v) => (
+              <TableRow key={v.id} hover={can(P.VoyagesView)} sx={can(P.VoyagesView) ? { cursor: 'pointer' } : undefined}
+                onClick={() => can(P.VoyagesView) && navigate(`/operations/voyages/${v.id}`)}>
+                <TableCell>{v.voyage_number}</TableCell>
+                <TableCell>{v.vessel?.name ?? '—'}</TableCell>
+                <TableCell>{humanize(v.operation_type)}</TableCell>
+                <TableCell><StatusChip status={v.status} /></TableCell>
+                <TableCell>{formatDateTime(v.commenced_at)}</TableCell>
+                <TableCell>{formatDateTime(v.completed_at)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </CardContent>
   );
 }

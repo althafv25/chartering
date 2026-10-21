@@ -134,6 +134,8 @@ export const P = {
   PayablesCreate: 'payables.create',
   PayablesApprove: 'payables.approve',
   BalancingView: 'balancing.view',
+  CiiView: 'cii.view',
+  CiiManage: 'cii.manage',
 } as const;
 
 export type PermissionName = (typeof P)[keyof typeof P];

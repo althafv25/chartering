@@ -13,6 +13,7 @@ import { StatusChip } from '../../components/StatusChip';
 import { ErrorState } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
 import { CompanyAutocomplete, CurrencySelect } from '../../components/MasterPickers';
+import { VoyageSelect } from '../../components/FinanceLinkPickers';
 import { Can } from '../../auth/guards';
 import { P } from '../../constants/permissions';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -64,11 +65,11 @@ export default function PayablesPage() {
 function NewPayableDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (p: Payable) => void }) {
   const qc = useQueryClient();
   const notify = useNotify();
-  const blank = { supplier_company_id: null as number | null, supplier_invoice_ref: '', issue_date: '', due_date: '', currency: 'USD' as string | null, subtotal: '', tax: '0' };
+  const blank = { voyage_id: null as number | null, supplier_company_id: null as number | null, supplier_invoice_ref: '', issue_date: '', due_date: '', currency: 'USD' as string | null, subtotal: '', tax: '0' };
   const [f, setF] = useState(blank);
   const [error, setError] = useState<string | null>(null);
   const create = useMutation({
-    mutationFn: () => payablesApi.create(f),
+    mutationFn: () => payablesApi.create({ ...f, voyage_id: f.voyage_id ?? undefined }),
     onSuccess: (r) => { notify.success(r.message); qc.invalidateQueries({ queryKey: ['payables'] }); setF(blank); onCreated(r.data); },
     onError: (e) => setError(errorMessage(e)),
   });
@@ -79,6 +80,10 @@ function NewPayableDialog({ open, onClose, onCreated }: { open: boolean; onClose
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>
+          <Grid size={12}>
+            <VoyageSelect value={f.voyage_id} onChange={(v) => setF({ ...f, voyage_id: v?.id ?? null, currency: v?.currency ?? f.currency })}
+              helperText="When linked, approving the payable books its total (incl. tax) as an approved expense on that voyage. Leave empty if the cost is already in the ledger." />
+          </Grid>
           <Grid size={12}><CompanyAutocomplete label="Supplier" required value={f.supplier_company_id} onChange={(id) => setF({ ...f, supplier_company_id: id })} /></Grid>
           <Grid size={{ xs: 12, sm: 6 }}><TextField label="Supplier invoice ref" required value={f.supplier_invoice_ref} onChange={(e) => setF({ ...f, supplier_invoice_ref: e.target.value })} /></Grid>
           <Grid size={{ xs: 12, sm: 6 }}><CurrencySelect label="Currency" required value={f.currency} onChange={(v) => setF({ ...f, currency: v })} /></Grid>

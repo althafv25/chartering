@@ -80,6 +80,15 @@ const tones: Record<string, Tone> = {
   paid: 'success',
   recorded: 'info',
   reversed: 'error',
+  // CII rating (A best, E worst)
+  A: 'success',
+  B: 'success',
+  C: 'warning',
+  D: 'warning',
+  E: 'error',
+  in_scope: 'info',
+  exempt: 'default',
+  retired: 'default',
 };
 
 export function StatusChip({ status, label, ...props }: { status: string; label?: string } & Omit<ChipProps, 'label' | 'color'>) {

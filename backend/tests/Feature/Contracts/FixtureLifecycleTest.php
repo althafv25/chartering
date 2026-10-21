@@ -62,6 +62,19 @@ class FixtureLifecycleTest extends ContractTestCase
         $this->as($this->charterer)->postJson("/api/v1/fixtures/{$id}/cancel", ['reason' => 'Changed mind'])->assertStatus(409)->assertJsonPath('error_code', 'fixture_in_use');
     }
 
+    public function test_contract_created_after_the_voyage_is_linked_and_listed_on_the_contract(): void
+    {
+        $id = $this->approvedFixture();
+        $this->actingAsRole(UserRole::Operations);
+        $voyage = $this->postJson("/api/v1/fixtures/{$id}/convert-to-voyage")->assertCreated()->assertJsonPath('data.contract_id', null)->json('data.id');
+
+        $contract = $this->as($this->charterer)->postJson("/api/v1/fixtures/{$id}/convert-to-contract")->assertCreated()
+            ->assertJsonPath('data.voyages.0.id', $voyage)->json('data.id');
+
+        $this->assertSame($contract, Voyage::query()->findOrFail($voyage)->contract_id);
+        $this->getJson("/api/v1/contracts/{$contract}")->assertOk()->assertJsonCount(1, 'data.voyages')->assertJsonPath('data.voyages.0.id', $voyage);
+    }
+
     public function test_draft_fixture_cannot_be_converted(): void
     {
         $id = $this->draftFixture();

@@ -11,7 +11,7 @@ import { ErrorState } from '../../components/Feedback';
 import { RATE_BASES, labelOf } from '../../constants/chartering';
 import { useDebounce } from '../../hooks/useDebounce';
 import { humanize } from '../../utils/format';
-import { groupDigits } from '../../utils/decimal';
+import { rate as fmtRate } from '../../utils/decimal';
 import type { Offer } from '../../types/chartering';
 
 export default function OffersPage() {
@@ -29,7 +29,7 @@ export default function OffersPage() {
     { key: 'cp', header: 'Charterer', hideBelow: 'md', render: (o) => o.enquiry?.charterer ?? '—' },
     { key: 'vessel', header: 'Vessel', render: (o) => o.vessel?.name },
     { key: 'rev', header: 'Latest', render: (o) => (o.latest_revision ? <Stack direction="row" spacing={1} alignItems="center"><span>Rev {o.latest_revision.revision_no}</span><StatusChip status={o.latest_revision.status} /></Stack> : '—') },
-    { key: 'rate', header: 'Rate', align: 'right', render: (o) => (o.latest_revision ? `${groupDigits(o.latest_revision.rate)} ${o.latest_revision.currency} ${labelOf(RATE_BASES, o.latest_revision.rate_basis)}` : '—') },
+    { key: 'rate', header: 'Rate', align: 'right', render: (o) => (o.latest_revision ? `${fmtRate(o.latest_revision.rate)} ${o.latest_revision.currency} ${labelOf(RATE_BASES, o.latest_revision.rate_basis)}` : '—') },
     { key: 'status', header: 'Offer', render: (o) => <StatusChip status={o.status} /> },
   ];
 

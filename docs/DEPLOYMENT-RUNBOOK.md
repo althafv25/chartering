@@ -1,6 +1,6 @@
 # Offshore deployment runbook
 
-Updated: 2026-10-04. Current repair evidence and remaining product scope are in [SYSTEM-AUDIT-2026-10-04.md](SYSTEM-AUDIT-2026-10-04.md).
+Updated: 2026-10-10. Current status and remaining go-live items are in [14-FINAL-STATUS.md](14-FINAL-STATUS.md) and [15-PENDING-ITEMS.md](15-PENDING-ITEMS.md).
 
 ## Release checks
 
