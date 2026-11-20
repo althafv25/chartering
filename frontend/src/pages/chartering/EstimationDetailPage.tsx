@@ -20,7 +20,6 @@ import { LoadingButton } from '../../components/LoadingButton';
 import { StatusChip } from '../../components/StatusChip';
 import { ActivityPanel } from '../../components/ActivityPanel';
 import { DocumentsPanel } from '../../components/DocumentsPanel';
-import { PdfDocumentButton } from '../../components/PdfDocumentButton';
 import { useAuth } from '../../auth/useAuth';
 import { P } from '../../constants/permissions';
 import { ESTIMATION_TYPES, labelOf } from '../../constants/chartering';
@@ -233,7 +232,6 @@ function ScenarioWorkspace({ estimation, scenarioId, onChanged, onCreated }: { e
           {dirty && !readOnly && <Chip size="small" color="warning" label="Unsaved changes" />}
         </Stack>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <PdfDocumentButton parentType="estimations" parentId={estimation.id} permission={P.EstimationsUpdate} generate={() => estimationsApi.generatePdf(estimation.id, scenarioId)} disabled={dirty && !readOnly} />
           {!readOnly && <LoadingButton variant="contained" startIcon={<SaveIcon />} loading={save.isPending} disabled={!dirty} onClick={() => save.mutate()}>Save & calculate</LoadingButton>}
           {!readOnly && !s.is_selected && <Tooltip title={dirty ? 'Save & calculate your changes before selecting this scenario.' : s.calc_status !== 'calculated' ? 'Complete the inputs and calculate this scenario first.' : ''}>
             <span><Button variant="outlined" disabled={dirty || s.calc_status !== 'calculated'} onClick={() => run.mutate('select')}>Select scenario</Button></span>
@@ -259,7 +257,7 @@ function ScenarioWorkspace({ estimation, scenarioId, onChanged, onCreated }: { e
         <Tab value="trace" label="Calculation trace" disabled={!s.result?.trace} />
       </Tabs>
 
-      {panel === 'inputs' && <ScenarioInputsEditor inputs={draft} currency={estimation.currency} readOnly={readOnly} patch={patch} />}
+      {panel === 'inputs' && <ScenarioInputsEditor inputs={draft} currency={estimation.currency} readOnly={readOnly} patch={patch} estimationType={estimation.estimation_type} />}
       {panel === 'results' && s.result && (
         <>
           {dirty && <Alert severity="info" sx={{ mb: 2 }}>Results reflect the last saved inputs. Save to recalculate.</Alert>}

@@ -39,7 +39,6 @@ export const estimationsApi = {
     env<Scenario>(api.put(`/estimations/${id}/scenarios/${sid}`, body)),
   calculate: (id: number, sid: number) => env<Scenario>(api.post(`/estimations/${id}/scenarios/${sid}/calculate`)),
   select: (id: number, sid: number) => env<Scenario>(api.post(`/estimations/${id}/scenarios/${sid}/select`)),
-  generatePdf: (id: number, sid: number) => env<DocumentItem>(api.post(`/estimations/${id}/scenarios/${sid}/pdf`)),
   refreshDefaults: (id: number, sid: number, body: { vessel?: boolean; consumption?: boolean }) =>
     env<Scenario>(api.post(`/estimations/${id}/scenarios/${sid}/refresh-defaults`, body)),
 };

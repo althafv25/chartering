@@ -74,6 +74,19 @@ class PortDaTest extends OperationsTestCase
         $this->as($this->charterer)->postJson('/api/v1/port-das', [])->assertForbidden();
     }
 
+    /** The list shows each DA's port-call label; with several DAs that must not lazy-load the call's port (it used to return a 500). */
+    public function test_listing_several_port_das_loads_port_call_labels_without_lazy_loading(): void
+    {
+        $id = $this->sailingVoyage();
+        foreach (['load', 'discharge'] as $purpose) {
+            $call = $this->portCall($id, ['purpose' => $purpose]);
+            $this->postJson('/api/v1/port-das', ['voyage_id' => $id, 'port_call_id' => $call['id'], 'port_id' => $this->ports[0], 'currency' => 'USD', 'da_type' => 'final'])->assertCreated();
+        }
+        $rows = $this->getJson("/api/v1/port-das?voyage_id={$id}")->assertOk()->json('data');
+        $this->assertCount(2, $rows);
+        $this->assertSame(['Jebel Ali (AEJEA)', 'Jebel Ali (AEJEA)'], array_column(array_column($rows, 'port_call'), 'label'));
+    }
+
     /** DA-02: approving a final DA creates voyage expenses from its items (source port_da); re-approval updates them in place while not paid. */
     public function test_approving_final_da_creates_voyage_expenses_and_reapproval_updates_in_place(): void
     {

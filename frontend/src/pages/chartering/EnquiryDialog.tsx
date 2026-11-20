@@ -16,6 +16,8 @@ import { isDecimal } from '../../utils/decimal';
 import type { Enquiry } from '../../types/chartering';
 import type { RoutePoint } from '../../types/masters';
 
+/** Business types priced per day: a new enquiry of these types starts with the per-day rate basis. */
+const PER_DAY_TYPES = ['time_charter', 'offshore_charter', 'service'];
 type Row = { point: RoutePoint | null; purpose: string; notes: string };
 type Form = Record<string, string | number | null>;
 
@@ -75,7 +77,8 @@ export function EnquiryDialog({ open, enquiry, onClose, onSaved }: { open: boole
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 4 }}>
-            {tf('business_type', 'Business type', { select: true, required: true, children: BUSINESS_TYPES.map((b) => <MenuItem key={b.value} value={b.value}>{b.label}</MenuItem>) })}
+            {tf('business_type', 'Business type', { select: true, required: true,
+              onChange: (e: { target: { value: string } }) => { const bt = e.target.value; setF((x) => ({ ...x, business_type: bt, ...(enquiry ? {} : { rate_basis: PER_DAY_TYPES.includes(bt) ? 'per_day' : 'per_mt' }) })); }, children: BUSINESS_TYPES.map((b) => <MenuItem key={b.value} value={b.value}>{b.label}</MenuItem>) })}
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             {tf('source', 'Source', { select: true, children: ['direct', 'broker', 'tender'].map((s) => <MenuItem key={s} value={s}>{humanize(s)}</MenuItem>) })}

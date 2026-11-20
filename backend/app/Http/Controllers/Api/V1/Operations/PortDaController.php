@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class PortDaController extends Controller
 {
-    private const WITH = ['port', 'portCall', 'voyage', 'agent', 'proforma', 'items.category'];
+    private const WITH = ['port', 'portCall.port', 'portCall.location', 'voyage', 'agent', 'proforma', 'items.category'];
 
     public function __construct(private readonly PortDaService $das) {}
 

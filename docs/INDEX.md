@@ -9,6 +9,12 @@ Documentation for the Offshore Chartering & Vessel Operations system. Last clean
 | Install and run the app | [`../README.md`](../README.md) |
 | See how a voyage charter flows, with every value to type and the exact numbers | [dataflow.md](dataflow.md) |
 | See the same for an offshore day-rate charter (activities, mob/demob, standby) | [offshore-dataflow.md](offshore-dataflow.md) |
+| See how offshore data flows with a contract chain, from an estimate only, from a contract and project only, or with no contract | [offshore-data-flow-paths.md](offshore-data-flow-paths.md) |
+| Create a dummy offshore job from enquiry to final profit, with every figure | [offshore-dummy-walkthrough.md](offshore-dummy-walkthrough.md) |
+| Follow the step-by-step procedure for an offshore charter and its activities | [offshore-charter-operating-procedure.md](offshore-charter-operating-procedure.md) |
+| Understand how time charter and offshore charter work, the activity types, and the rollout steps | [time-charter-and-offshore-charter-guide.md](time-charter-and-offshore-charter-guide.md) |
+| See the same for a time charter (hire per day, charterer pays fuel, off-hire) | [time-charter-dataflow.md](time-charter-dataflow.md) |
+| See the same for a cargo relet (head-charter hire, net relet margin) | [cargo-relet-dataflow.md](cargo-relet-dataflow.md) |
 | Read a narrative P&L walkthrough with formula references | [pl.md](pl.md) |
 | Understand the system in one document (architecture, roles, flows) | [SYSTEM-OVERVIEW.md](SYSTEM-OVERVIEW.md) |
 | Follow what users do and what data results from each action | [USER_WORKFLOW.md](USER_WORKFLOW.md), [DATA-FLOW-GUIDE.md](DATA-FLOW-GUIDE.md), [DATA-FLOW-REFERENCE.md](DATA-FLOW-REFERENCE.md) |

@@ -110,7 +110,7 @@ function MoneyFields({ label, money, currency, onChange, disabled }: { label: st
   );
 }
 
-export function ScenarioInputsEditor({ inputs, currency, readOnly, patch }: { inputs: ScenarioInputs; currency: string; readOnly: boolean; patch: Patch }) {
+export function ScenarioInputsEditor({ inputs, currency, readOnly, patch, estimationType }: { inputs: ScenarioInputs; currency: string; readOnly: boolean; patch: Patch; estimationType?: string }) {
   const fuels = useQuery({ queryKey: ['reference', 'fuel-types', 'active'], queryFn: () => referenceApi.list('fuel-types', true), staleTime: 300_000 });
   const revCats = useQuery({ queryKey: ['reference', 'revenue-categories', 'active'], queryFn: () => referenceApi.list('revenue-categories', true), staleTime: 300_000 });
   const expCats = useQuery({ queryKey: ['reference', 'expense-categories', 'active'], queryFn: () => referenceApi.list('expense-categories', true), staleTime: 300_000 });
@@ -119,9 +119,11 @@ export function ScenarioInputsEditor({ inputs, currency, readOnly, patch }: { in
   const d = readOnly;
 
   const addRevenue = () => patch((x) => {
-    const cat = revCats.data?.[0] as (ReferenceItem & { is_commissionable?: boolean }) | undefined;
+    // A time charter earns hire per day; other types start from the first category as a lump sum.
+    const hire = estimationType === 'time_charter';
+    const cat = (hire ? revCats.data?.find((c) => c.code === 'HIRE') ?? revCats.data?.[0] : revCats.data?.[0]) as (ReferenceItem & { is_commissionable?: boolean }) | undefined;
     if (!cat) return;
-    x.revenue_items.push({ revenue_category_id: cat.id, description: cat.name, basis: 'lump_sum', quantity: null, rate: null, currency, fx_rate: '1',
+    x.revenue_items.push({ revenue_category_id: cat.id, description: cat.name, basis: hire && cat.code === 'HIRE' ? 'per_day' : 'lump_sum', quantity: null, rate: null, currency, fx_rate: '1',
       commissionable: !!cat.is_commissionable, address_pct: '0', brokerage_pct: '0', other_pct: '0', primary: x.revenue_items.length === 0 });
   });
   const addCost = () => patch((x) => {
@@ -129,8 +131,10 @@ export function ScenarioInputsEditor({ inputs, currency, readOnly, patch }: { in
     if (!cat) return;
     x.cost_items.push({ expense_category_id: cat.id, description: cat.name, basis: 'lump_sum', quantity: null, rate: null, currency, fx_rate: '1', account: 'owner' });
   });
+  // On a time charter the charterer pays port and agency costs, so new calls start on that account.
+  const callAccount: Account = estimationType === 'time_charter' ? 'charterer' : 'owner';
   const blankCall = (): CallInput => ({ label: '', kind: 'port', working_days: '0', idle_days: '0', waiting_days: '0', dp_days: '0', standby_days: '0',
-    port_cost: { amount: '0', currency, fx_rate: '1', account: 'owner' }, agency_cost: { amount: '0', currency, fx_rate: '1', account: 'owner' } });
+    port_cost: { amount: '0', currency, fx_rate: '1', account: callAccount }, agency_cost: { amount: '0', currency, fx_rate: '1', account: callAccount } });
 
   return (
     <Stack spacing={2.5} sx={{ containerType: 'inline-size', containerName: 'scenario-inputs', minWidth: 0, '& .MuiFormControl-root': { minWidth: 0 }, '& .MuiInputBase-root, & .MuiInputLabel-root': { fontSize: '0.8125rem' } }}>

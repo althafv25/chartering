@@ -167,8 +167,6 @@ Open the saved enquiry and use **Vessels** to add candidates to the shortlist.
 - Check the revenue basis: a lump-sum enquiry does not automatically fill a per-tonne default revenue row.
 - Avoid counting the same fuel or port cost both in calculated fuel/call costs and in additional cost items.
 
-**Estimation PDF:** In the scenario toolbar, click **Generate PDF** to preview and download an internal estimation report. It contains the saved scenario's assumptions and current calculated summary, including profit and TCE. An incomplete scenario is identified explicitly and has no calculated financial summary. Save your edits before generating the report. The PDF is archived under the estimation's **Documents** tab.
-
 ### Step 3 — Create and negotiate the offer
 
 **Screen:** Open the approved, enquiry-linked estimation → **Create offer**.

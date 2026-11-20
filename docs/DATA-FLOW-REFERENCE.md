@@ -157,7 +157,6 @@ All paths below are relative to `/api/v1` and require the appropriate authentica
 | Fixture workflow | `POST /fixtures/{fixture}/submit`, `/approve`, `/reject`, `/fail`, `/cancel` |
 | Create contract/voyage from fixture | `POST /fixtures/{fixture}/convert-to-contract` / `/convert-to-voyage` |
 | Contract workflow | `POST /contracts/{contract}/submit`, `/approve`, `/activate`, `/complete` |
-| Generate estimation PDF | `POST /estimations/{estimation}/scenarios/{scenario}/pdf` |
 | Generate offer revision PDF | `POST /offers/{offer}/revisions/{revision}/pdf` |
 | Generate fixture recap / contract PDF | `POST /fixtures/{fixture}/pdf` / `POST /contracts/{contract}/pdf` |
 | Download generated document | `GET /documents/{document}/download` |
