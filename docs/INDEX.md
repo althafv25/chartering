@@ -10,6 +10,7 @@ Documentation for the Offshore Chartering & Vessel Operations system. Last clean
 | See how a voyage charter flows, with every value to type and the exact numbers | [dataflow.md](dataflow.md) |
 | See the same for an offshore day-rate charter (activities, mob/demob, standby) | [offshore-dataflow.md](offshore-dataflow.md) |
 | See how offshore data flows with a contract chain, from an estimate only, from a contract and project only, or with no contract | [offshore-data-flow-paths.md](offshore-data-flow-paths.md) |
+| See how the offshore demo seeder builds a whole job and how its data flows | [offshore-seeder-data-flow.md](offshore-seeder-data-flow.md) |
 | Create a dummy offshore job from enquiry to final profit, with every figure | [offshore-dummy-walkthrough.md](offshore-dummy-walkthrough.md) |
 | Follow the step-by-step procedure for an offshore charter and its activities | [offshore-charter-operating-procedure.md](offshore-charter-operating-procedure.md) |
 | Understand how time charter and offshore charter work, the activity types, and the rollout steps | [time-charter-and-offshore-charter-guide.md](time-charter-and-offshore-charter-guide.md) |

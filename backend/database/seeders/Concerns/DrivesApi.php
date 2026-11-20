@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands\Concerns;
+namespace Database\Seeders\Concerns;
 
 use App\Models\User;
 use Illuminate\Contracts\Http\Kernel;
@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 
-/** In-process API client used by the demo-data loaders (same validation and workflow rules as the UI). */
+/** In-process API client used by the demo-data seeders (same validation and workflow rules as the UI). */
 trait DrivesApi
 {
     private function as(User $user): static
