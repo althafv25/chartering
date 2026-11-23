@@ -6,8 +6,11 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Enquiry;
 use App\Models\EnquiryVessel;
 use App\Models\Estimation;
+use App\Models\Fixture;
+use App\Models\OfferRevision;
 use App\Models\User;
 use App\Models\Vessel;
+use App\Models\Voyage;
 use App\Services\SequenceService;
 use Illuminate\Support\Facades\DB;
 
@@ -147,6 +150,31 @@ class EstimationService
                 ->withProperties(['attributes' => ['cloned_from' => $source->estimation_number]])->log("Cloned from {$source->estimation_number}");
 
             return $copy;
+        });
+    }
+
+    /**
+     * Soft-deletes a draft estimation that no offer, fixture or voyage uses. Its scenarios stay in the database (EST-12).
+     */
+    public function delete(Estimation $est, User $actor): void
+    {
+        DB::transaction(function () use ($est, $actor) {
+            $locked = $this->lockInStatus($est, ['draft'], 'deleted');
+            $scenarioIds = $locked->scenarios()->pluck('id');
+
+            $offerRevisions = OfferRevision::query()->whereIn('estimation_scenario_id', $scenarioIds)->count();
+            $fixtures = Fixture::query()->whereIn('estimation_scenario_id', $scenarioIds)->count();
+            $voyages = Voyage::query()->where('estimation_id', $locked->id)->orWhereIn('estimation_scenario_id', $scenarioIds)->count();
+            if ($offerRevisions + $fixtures + $voyages > 0) {
+                throw new BusinessRuleException(
+                    "Estimation {$locked->estimation_number} is used by {$offerRevisions} offer revision(s), {$fixtures} fixture(s) and {$voyages} voyage(s) and cannot be deleted.",
+                    'estimation_in_use',
+                );
+            }
+
+            activity('estimations')->performedOn($locked)->causedBy($actor)->event('deleted')
+                ->log("Estimation {$locked->estimation_number} deleted");
+            $locked->delete();
         });
     }
 

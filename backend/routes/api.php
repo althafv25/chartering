@@ -128,7 +128,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::post('offers/{offer}/revisions/{revision}/convert-to-fixture', [OfferController::class, 'createFixture']);
     Route::post('offers/{offer}/revisions/{revision}/pdf', [CommercialPdfController::class, 'offer'])->middleware('throttle:exports');
 
-    Route::apiResource('estimations', EstimationController::class)->except(['destroy']);
+    Route::apiResource('estimations', EstimationController::class);
     Route::post('estimations/{estimation}/submit', [EstimationController::class, 'submit']);
     Route::post('estimations/{estimation}/approve', [EstimationController::class, 'approve']);
     Route::post('estimations/{estimation}/reject', [EstimationController::class, 'reject']);

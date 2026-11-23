@@ -27,7 +27,7 @@ export default function LedgerPage() {
   const [kind, setKind] = useState<Kind>('revenue');
   return (
     <>
-      <PageHeader title="Revenue & Expenses" subtitle="Voyage revenue and expense lines that feed invoices, payables and voyage P&L." breadcrumbs={[{ label: 'Commercial' }, { label: 'Revenue & Expenses' }]} />
+      <PageHeader title="Revenue & Expenses (Ledger)" subtitle="Voyage revenue and expense lines that feed invoices, payables and voyage P&L." breadcrumbs={[{ label: 'Commercial' }, { label: 'Revenue & Expenses' }]} />
       <Card>
         <Tabs value={kind} onChange={(_, v) => setKind(v)} sx={{ px: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Tab value="revenue" label="Revenue" /><Tab value="expense" label="Expenses" />

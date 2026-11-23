@@ -7,6 +7,7 @@ import DirectionsBoatOutlined from '@mui/icons-material/DirectionsBoatOutlined';
 import LocalGasStationOutlined from '@mui/icons-material/LocalGasStationOutlined';
 import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
 import NotesOutlined from '@mui/icons-material/NotesOutlined';
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 import { bunkersApi } from '../../api/bunkers';
 import { voyagesApi } from '../../api/operations';
 import { vesselsApi } from '../../api/masters';
@@ -14,6 +15,8 @@ import { errorMessage } from '../../api/client';
 import { DataTable, type Column } from '../../components/DataTable';
 import { ErrorState } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
+import { AttachFiles } from '../../components/AttachFiles';
+import { uploadAttachments } from '../../lib/uploadAttachments';
 import { StatusChip } from '../../components/StatusChip';
 import { FormFieldGrid, FormLayout, FormSection } from '../../components/FormSection';
 import { KeyValueGrid } from '../../components/KeyValueGrid';
@@ -45,6 +48,10 @@ export function BunkerStemsTable({ filters, preset, readOnly, openOrderRequest }
   const [cancel, setCancel] = useState<BunkerStem | null>(null);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Documents attached to the order being created. The order is saved first, because documents belong to a saved stem.
+  const [files, setFiles] = useState<File[]>([]);
+  const [docTypeId, setDocTypeId] = useState('');
+  const [created, setCreated] = useState<BunkerStem | null>(null);
   const q = { page, per_page: 15, ...filters };
   const list = useQuery({ queryKey: ['bunker-stems', q], queryFn: () => bunkersApi.list(q), placeholderData: keepPreviousData });
   const vessels = useQuery({ queryKey: ['vessels', 'active-all'], queryFn: () => vesselsApi.list({ per_page: 100, status: 'active' }), enabled: !!order && !preset });
@@ -54,9 +61,25 @@ export function BunkerStemsTable({ filters, preset, readOnly, openOrderRequest }
   const voyage = useQuery({ queryKey: ['voyages', voyId], queryFn: () => voyagesApi.get(voyId!), enabled: !!voyId });
   const refresh = () => { qc.invalidateQueries({ queryKey: ['bunker-stems'] }); qc.invalidateQueries({ queryKey: ['rob-ledger'] }); };
 
+  const closeOrder = () => { setOrder(null); setFiles([]); setDocTypeId(''); setCreated(null); };
   const save = useMutation({
-    mutationFn: () => bunkersApi.save(null, { ...order!, vessel_id: Number(order!.vessel_id), voyage_id: voyId, port_call_id: Number(order!.port_call_id) || null, remarks: order!.remarks || null }),
-    onSuccess: (r) => { notify.success(r.message); setOrder(null); refresh(); },
+    mutationFn: async () => {
+      // Retrying uploads after a partial failure must not create a second order.
+      const stem = created ?? (await bunkersApi.save(null, { ...order!, vessel_id: Number(order!.vessel_id), voyage_id: voyId, port_call_id: Number(order!.port_call_id) || null, remarks: order!.remarks || null })).data;
+      const { failed, reason } = await uploadAttachments('bunker-stems', stem.id, files, docTypeId);
+      return { stem, failed, reason };
+    },
+    onSuccess: ({ stem, failed, reason }) => {
+      refresh();
+      if (failed.length === 0) {
+        notify.success(`Order ${stem.stem_number} created.`);
+        closeOrder();
+        return;
+      }
+      setCreated(stem);
+      setFiles(failed);
+      setError(`Order ${stem.stem_number} is saved, but ${failed.length} document(s) did not upload (${reason}). Press "Retry uploads" to try again.`);
+    },
     onError: (e) => setError(errorMessage(e)),
   });
   const doDeliver = useMutation({
@@ -71,8 +94,12 @@ export function BunkerStemsTable({ filters, preset, readOnly, openOrderRequest }
   });
 
   const editable = !readOnly && can(P.BunkersManage);
+  const canUpload = editable && can(P.DocumentsUpload);
   const openOrder = useCallback(() => {
     setError(null);
+    setFiles([]);
+    setDocTypeId('');
+    setCreated(null);
     setOrder({ vessel_id: String(preset?.vessel_id ?? ''), voyage_id: String(preset?.voyage_id ?? ''), port_call_id: '',
       supplier_company_id: null, fuel_type_id: null, ordered_on: new Date().toISOString().slice(0, 10), ordered_mt: '', price_per_mt: '', currency: 'USD', remarks: '' });
   }, [preset?.vessel_id, preset?.voyage_id]);
@@ -105,7 +132,7 @@ export function BunkerStemsTable({ filters, preset, readOnly, openOrderRequest }
           emptyTitle="No bunker stems" emptyDescription="Create an order, then record the delivered quantity and bunker delivery note." />
       )}
 
-      <Dialog open={!!order} onClose={() => setOrder(null)} maxWidth="md" fullWidth>
+      <Dialog open={!!order} onClose={() => closeOrder()} maxWidth="md" fullWidth>
         <DialogTitle>Order bunkers</DialogTitle>
         {order && (
           <DialogContent dividers>
@@ -145,12 +172,21 @@ export function BunkerStemsTable({ filters, preset, readOnly, openOrderRequest }
               <FormSection title="Notes" icon={<NotesOutlined />}>
                 <TextField label="Remarks" multiline minRows={2} value={order.remarks} onChange={(e) => setOrder({ ...order, remarks: e.target.value })} />
               </FormSection>
+              {canUpload && (
+                <FormSection title="Documents (optional)" icon={<UploadFileOutlined />} hint="Attach the bunker delivery note, the supplier quotation or other records. The files are uploaded when you save the order.">
+                  <AttachFiles files={files} onFiles={setFiles} docTypeId={docTypeId} onDocTypeId={setDocTypeId} disabled={save.isPending}
+                    enabled={!!order && canUpload} onError={setError} />
+                </FormSection>
+              )}
             </FormLayout>
           </DialogContent>
         )}
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button variant="outlined" onClick={() => setOrder(null)}>Cancel</Button>
-          <LoadingButton variant="contained" loading={save.isPending} disabled={!valid} onClick={() => save.mutate()}>Order</LoadingButton>
+          <Button variant="outlined" onClick={() => closeOrder()}>Cancel</Button>
+          <LoadingButton variant="contained" loading={save.isPending}
+            disabled={!valid || (files.length > 0 && !docTypeId) || (created !== null && files.length === 0)} onClick={() => save.mutate()}>
+            {created ? 'Retry uploads' : 'Order'}
+          </LoadingButton>
         </DialogActions>
       </Dialog>
 

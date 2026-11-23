@@ -89,6 +89,7 @@ class OperationalRecordsTest extends OperationsTestCase
 
     public function test_captain_reports_chronology_verification_and_actuals(): void
     {
+        $checker = $this->userWithRole(UserRole::Operations);
         $id = $this->sailingVoyage();
         $call = $this->portCall($id);
         $vessel = $this->vessel->id;
@@ -115,12 +116,18 @@ class OperationalRecordsTest extends OperationsTestCase
         $this->postJson("/api/v1/captain-reports/{$noon['id']}/verify")->assertStatus(409); // not submitted yet
         $this->postJson("/api/v1/captain-reports/{$noon['id']}/submit")->assertOk()->assertJsonPath('data.status', 'submitted');
         $this->putJson("/api/v1/captain-reports/{$noon['id']}", ['lock_version' => $noon['lock_version'] + 1, 'remarks' => 'x'])->assertStatus(409)->assertJsonPath('error_code', 'report_read_only');
-        $this->postJson("/api/v1/captain-reports/{$noon['id']}/verify")->assertOk()->assertJsonPath('data.status', 'verified');
+        // The maker cannot verify their own report, and a rejected-by-self report is refused the same way.
+        $this->postJson("/api/v1/captain-reports/{$noon['id']}/verify")->assertStatus(403)->assertJsonPath('error_code', 'self_approval_not_allowed');
+        $this->postJson("/api/v1/captain-reports/{$noon['id']}/reject", ['reason' => 'Self check'])->assertStatus(403)->assertJsonPath('error_code', 'self_approval_not_allowed');
+        $this->as($checker)->postJson("/api/v1/captain-reports/{$noon['id']}/verify")->assertOk()->assertJsonPath('data.status', 'verified');
+        $this->as($this->ops);
 
         $this->postJson("/api/v1/captain-reports/{$arrival['id']}/submit")->assertOk();
-        $this->postJson("/api/v1/captain-reports/{$arrival['id']}/reject", ['reason' => 'Wrong time'])->assertOk()->assertJsonPath('data.status', 'rejected');
+        $this->as($checker)->postJson("/api/v1/captain-reports/{$arrival['id']}/reject", ['reason' => 'Wrong time'])->assertOk()->assertJsonPath('data.status', 'rejected');
+        $this->as($this->ops);
         $this->postJson("/api/v1/captain-reports/{$arrival['id']}/submit")->assertOk();
-        $this->postJson("/api/v1/captain-reports/{$arrival['id']}/verify", ['apply_to_port_call' => true])->assertOk();
+        $this->as($checker)->postJson("/api/v1/captain-reports/{$arrival['id']}/verify", ['apply_to_port_call' => true])->assertOk();
+        $this->as($this->ops);
         $this->getJson("/api/v1/voyages/{$id}")->assertJsonPath('data.port_calls.0.ata', '2026-10-16T02:30:00+00:00')->assertJsonPath('data.port_calls.0.status', 'arrived');
 
         $r = $rows();

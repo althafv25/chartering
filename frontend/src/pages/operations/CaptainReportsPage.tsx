@@ -19,7 +19,7 @@ export default function CaptainReportsPage() {
   const vessels = useQuery({ queryKey: ['vessels', 'active-all'], queryFn: () => vesselsApi.list({ per_page: 100, status: 'active' }) });
   return (
     <>
-      <PageHeader title="Captain Reports" subtitle="Noon, arrival, departure and other reports. Reports count towards actuals only after verification." breadcrumbs={[{ label: 'Operations' }, { label: 'Captain Reports' }]}
+      <PageHeader title="Daily Reports (Captains Report)" subtitle="Noon, arrival, departure and other reports. Reports count towards actuals only after verification." breadcrumbs={[{ label: 'Operations' }, { label: 'Captain Reports' }]}
         actions={<Can permission={P.CaptainReportsCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => setReportRequest((n) => n + 1)}>New report</Button></Can>} />
       <Card>
         <OperationsFilterBar active={!!vessel || !!status || !!type} onClear={() => { setVessel(''); setStatus(''); setType(''); }}>

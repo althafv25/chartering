@@ -94,6 +94,14 @@ class EstimationController extends Controller
         return $this->created(new EstimationResource($this->repo->detail($this->estimations->clone($estimation, $request->user()))), 'Estimation cloned.');
     }
 
+    public function destroy(Request $request, Estimation $estimation): JsonResponse
+    {
+        $this->authorize('delete', $estimation);
+        $this->estimations->delete($estimation, $request->user());
+
+        return $this->deleted('Estimation deleted.');
+    }
+
     /** Side-by-side key figures of all scenarios. */
     public function compare(Estimation $estimation): JsonResponse
     {

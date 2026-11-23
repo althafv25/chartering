@@ -1,5 +1,5 @@
 import { Alert, Box, Card, CardContent, Divider, Grid, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
-import { days, isNegative, money, pct, trimZeros } from '../../utils/decimal';
+import { isNegative, money, pct, trimZeros } from '../../utils/decimal';
 import { humanize } from '../../utils/format';
 import type { ScenarioResult, TraceStep } from '../../types/chartering';
 
@@ -34,7 +34,7 @@ export function ScenarioResultsPanel({ result, currency, type }: { result: Scena
           <Grid container spacing={2}>
             <Grid size={{ xs: 6, md: 3 }}><Kpi label={relet ? 'Net relet margin' : 'Profit'} value={m(result.profit)} tone={isNegative(result.profit) ? 'neg' : 'pos'} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Kpi label="TCE / day" value={m(result.tce_per_day)} /></Grid>
-            <Grid size={{ xs: 6, md: 3 }}><Kpi label="Total days" value={days(result.total_days, 2)} /></Grid>
+            <Grid size={{ xs: 6, md: 3 }}><Kpi label="Total days" value={trimZeros(result.total_days)} /></Grid>
             <Grid size={{ xs: 6, md: 3 }}><Kpi label={`Break-even${result.breakeven_item ? ` (${result.breakeven_item})` : ''}`} value={result.breakeven_rate ? `${trimZeros(result.breakeven_rate)} ${currency}` : '—'} /></Grid>
           </Grid>
         </CardContent>
@@ -68,9 +68,9 @@ export function ScenarioResultsPanel({ result, currency, type }: { result: Scena
             <Typography variant="subtitle2" gutterBottom>Time & distance</Typography>
             <Line label="Sea distance" value={`${trimZeros(result.sea_distance_nm)} NM`} />
             <Line label="of which ECA" value={`${trimZeros(result.eca_distance_nm)} NM`} indent />
-            <Line label="Sea days (incl. margin)" value={days(result.sea_days, 3)} />
-            <Line label="Port / offshore days" value={days(result.port_days, 3)} />
-            <Line label="Total elapsed days" value={days(result.total_days, 3)} strong />
+            <Line label="Sea days (incl. margin)" value={trimZeros(result.sea_days)} />
+            <Line label="Port / offshore days" value={trimZeros(result.port_days)} />
+            <Line label="Total elapsed days" value={trimZeros(result.total_days)} strong />
             <Divider sx={{ my: 1 }} />
             <Typography variant="subtitle2" gutterBottom>Fuel (MT)</Typography>
             <Table size="small">

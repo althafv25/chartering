@@ -58,6 +58,7 @@ export const P = {
   EstimationsApprove: 'chartering.estimations.approve',
   EstimationsReject: 'chartering.estimations.reject',
   EstimationsClone: 'chartering.estimations.clone',
+  EstimationsDelete: 'chartering.estimations.delete',
   OffersView: 'chartering.offers.view',
   OffersCreate: 'chartering.offers.create',
   OffersUpdate: 'chartering.offers.update',

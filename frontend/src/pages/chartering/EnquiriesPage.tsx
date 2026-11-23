@@ -45,8 +45,8 @@ export default function EnquiriesPage() {
 
   return (
     <>
-      <PageHeader title="Enquiries" subtitle="Chartering requests (RFQ) and their pipeline status" breadcrumbs={[{ label: 'Chartering' }, { label: 'Enquiries' }]}
-        actions={<Can permission={P.EnquiriesCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog(true)}>New enquiry</Button></Can>} />
+      <PageHeader title="Entries (Enquiries)" subtitle="Chartering requests (RFQ) and their pipeline status" breadcrumbs={[{ label: 'Chartering' }, { label: 'Enquiries' }]}
+        actions={<Can permission={P.EnquiriesCreate}><Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog(true)}>New entry (enquiry)</Button></Can>} />
       <Card>
         <FilterBar search={search} onSearch={(v) => { setSearch(v); setPage(1); }} placeholder="Search number, cargo, charterer, broker…">
           <TextField select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} sx={{ maxWidth: { md: 180 } }}>

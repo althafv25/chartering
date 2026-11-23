@@ -94,6 +94,7 @@ enum Permission: string
     case EstimationsApprove = 'chartering.estimations.approve';
     case EstimationsReject = 'chartering.estimations.reject';
     case EstimationsClone = 'chartering.estimations.clone';
+    case EstimationsDelete = 'chartering.estimations.delete';
 
     // Chartering — offers
     case OffersView = 'chartering.offers.view';

@@ -78,7 +78,10 @@ export function errorMessage(error: unknown, fallback = 'Something went wrong.')
   if (error instanceof ApiError) {
     const first = Object.values(error.fieldErrors)[0]?.[0];
     if (error.code === 'validation_failed' && first) return first;
-    return error.requestId && error.status >= 500 ? `${error.message} (Ref: ${error.requestId})` : error.message;
+    if (error.status >= 500) return error.requestId ? `${error.message} (Ref: ${error.requestId})` : error.message;
+    // Business-rule errors carry the reasons in field errors (e.g. which port call or report blocks completion).
+    const reasons = Object.values(error.fieldErrors).flat();
+    return reasons.length > 0 ? `${error.message} ${reasons.join(' ')}` : error.message;
   }
   return error instanceof Error ? error.message : fallback;
 }

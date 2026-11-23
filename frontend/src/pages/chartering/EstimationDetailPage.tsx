@@ -12,7 +12,9 @@ import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SaveIcon from '@mui/icons-material/Save';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import { estimationsApi, offersApi } from '../../api/chartering';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ApiError } from '../../api/client';
 import { PageHeader } from '../../components/PageHeader';
 import { ErrorState, SectionLoader } from '../../components/Feedback';
@@ -25,7 +27,7 @@ import { P } from '../../constants/permissions';
 import { ESTIMATION_TYPES, labelOf } from '../../constants/chartering';
 import { useNotify } from '../../hooks/useNotify';
 import { formatDateTime } from '../../utils/format';
-import { days, money, trimZeros } from '../../utils/decimal';
+import { money, trimZeros } from '../../utils/decimal';
 import type { Estimation, Scenario, ScenarioInputs } from '../../types/chartering';
 import { ScenarioInputsEditor } from './ScenarioInputsEditor';
 import { ScenarioResultsPanel, TraceTable } from './ScenarioResultsPanel';
@@ -58,6 +60,7 @@ export default function EstimationDetailPage() {
   const scenarios = est.data?.scenarios ?? [];
   const currentId = scenarioParam ? Number(scenarioParam) : (scenarios.find((s) => s.is_selected) ?? scenarios[0])?.id;
   const [decision, setDecision] = useState<'approve' | 'reject' | 'voyage' | 'offer' | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [text, setText] = useState('');
 
   const invalidate = () => { qc.invalidateQueries({ queryKey: ['estimations'] }); qc.invalidateQueries({ queryKey: ['enquiries'] }); };
@@ -78,6 +81,11 @@ export default function EstimationDetailPage() {
     mutationFn: () => estimationsApi.clone(id),
     onSuccess: (r) => { notify.success(r.message); invalidate(); navigate(`/chartering/estimations/${r.data.id}`); },
     onError: (e) => notify.error(e),
+  });
+  const removeEst = useMutation({
+    mutationFn: () => estimationsApi.remove(id),
+    onSuccess: (r) => { notify.success(r.message); invalidate(); navigate('/chartering/estimations'); },
+    onError: (e) => { notify.error(e); setConfirmDelete(false); },
   });
   const toVoyage = useMutation({
     mutationFn: () => estimationsApi.convertToVoyage(id, text),
@@ -109,6 +117,7 @@ export default function EstimationDetailPage() {
           {e.status === 'approved' && e.enquiry_id && can(P.OffersCreate) && <Button variant="contained" onClick={() => setDecision('offer')}>Create offer</Button>}
           {e.status === 'approved' && can(P.VoyagesCreate) && <Button variant="outlined" onClick={() => setDecision('voyage')}>Direct operation → voyage</Button>}
           {can(P.EstimationsClone) && <Tooltip title="Copy into a new draft estimation (scenario lineage preserved)"><Button startIcon={<ContentCopy />} onClick={() => cloneEst.mutate()} disabled={cloneEst.isPending}>Clone</Button></Tooltip>}
+          {e.status === 'draft' && can(P.EstimationsDelete) && <Tooltip describeChild title="Delete this draft. Not possible once an offer, fixture or voyage uses it"><Button color="error" startIcon={<DeleteOutline />} onClick={() => setConfirmDelete(true)}>Delete</Button></Tooltip>}
         </>}
       />
 
@@ -169,6 +178,16 @@ export default function EstimationDetailPage() {
           {decision === 'offer' && <LoadingButton variant="contained" loading={toOffer.isPending} onClick={() => toOffer.mutate()}>Create offer</LoadingButton>}
         </DialogActions>
       </Dialog>
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete estimation"
+        message={`Delete ${e.estimation_number}? Its scenarios are kept in the database, but the estimation is removed from the list.`}
+        confirmLabel="Delete"
+        danger
+        loading={removeEst.isPending}
+        onConfirm={() => removeEst.mutate()}
+        onClose={() => setConfirmDelete(false)}
+      />
     </>
   );
 }
@@ -291,8 +310,8 @@ function CompareView({ estimation }: { estimation: Estimation }) {
   const metric: [string, (r: (typeof rows)[number]) => string][] = [
     ['Speed (kn)', (r) => r.speed_kn.map(trimZeros).join(' / ') || '—'],
     ['Bunker price', (r) => r.fuel_prices.map((f) => `${f.code} ${f.price ? trimZeros(f.price) : '—'}`).join(', ') || '—'],
-    ['Sea days', (r) => days(r.result?.sea_days, 2)],
-    ['Total days', (r) => days(r.result?.total_days, 2)],
+    ['Sea days', (r) => trimZeros(r.result?.sea_days)],
+    ['Total days', (r) => trimZeros(r.result?.total_days)],
     ['Fuel (MT)', (r) => trimZeros(r.result?.fuel_total_mt)],
     ['Fuel cost', (r) => money(r.result?.fuel_cost)],
     ['Voyage costs', (r) => money(r.result?.voyage_costs)],

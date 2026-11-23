@@ -31,7 +31,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $addressBook = [P::CompaniesCreate, P::CompaniesUpdate, P::CompaniesDelete];
         $charteringWork = [
             P::EnquiriesCreate, P::EnquiriesUpdate, P::EnquiriesDelete,
-            P::EstimationsCreate, P::EstimationsUpdate, P::EstimationsSubmit, P::EstimationsClone,
+            P::EstimationsCreate, P::EstimationsUpdate, P::EstimationsSubmit, P::EstimationsClone, P::EstimationsDelete,
             P::OffersCreate, P::OffersUpdate, P::OffersSend, P::OffersAccept, P::OffersReject,
             P::FixturesCreate, P::FixturesUpdate, P::FixturesSubmit, P::FixturesCancel,
             P::ContractsCreate, P::ContractsUpdate, P::ContractsSubmit, P::ContractsActivate, P::ContractsCancel, P::ContractsAmend,

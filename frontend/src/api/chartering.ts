@@ -30,6 +30,7 @@ export const estimationsApi = {
   reject: (id: number, reason: string) => env<Estimation>(api.post(`/estimations/${id}/reject`, { reason })),
   reopen: (id: number) => env<Estimation>(api.post(`/estimations/${id}/reopen`)),
   clone: (id: number) => env<Estimation>(api.post(`/estimations/${id}/clone`)),
+  remove: (id: number) => env<null>(api.delete(`/estimations/${id}`)),
   compare: (id: number) => data<{ currency: string; scenarios: CompareRow[] }>(api.get(`/estimations/${id}/compare`)),
   activity: (id: number, params: ListParams) => page<ActivityEntry>(api.get(`/estimations/${id}/activity`, { params })),
   convertToVoyage: (id: number, reason: string) => env<Voyage>(api.post(`/estimations/${id}/convert-to-voyage`, { reason })),

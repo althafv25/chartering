@@ -72,7 +72,7 @@ export function EnquiryDialog({ open, enquiry, onClose, onSaved }: { open: boole
 
   return (
     <Dialog open={open} onClose={save.isPending ? undefined : onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{enquiry ? `Edit ${enquiry.enquiry_number}` : 'New enquiry'}</DialogTitle>
+      <DialogTitle>{enquiry ? `Edit ${enquiry.enquiry_number}` : 'New entry'}</DialogTitle>
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>

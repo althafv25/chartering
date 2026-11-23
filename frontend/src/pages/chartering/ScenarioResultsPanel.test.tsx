@@ -29,6 +29,13 @@ describe('ScenarioResultsPanel', () => {
     expect(screen.getByText(/engine v1\.0\.0/)).toBeInTheDocument();
   });
 
+  it('shows days exactly as calculated, without rounding them to 2 decimals', () => {
+    wrap(<ScenarioResultsPanel result={{ ...result, sea_days: '1.145833', port_days: '3.500000', total_days: '4.645833' }} currency="USD" type="voyage_charter" />);
+    expect(screen.getAllByText('4.645833').length).toBeGreaterThan(0);
+    expect(screen.getByText('1.145833')).toBeInTheDocument();
+    expect(screen.getByText('3.5')).toBeInTheDocument();
+    expect(screen.queryByText('4.65')).not.toBeInTheDocument();
+  });
   it('labels profit as relet margin for cargo relet', () => {
     wrap(<ScenarioResultsPanel result={result} currency="USD" type="cargo_relet" />);
     expect(screen.getAllByText('Net relet margin').length).toBeGreaterThan(0);

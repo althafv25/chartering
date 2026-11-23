@@ -7,6 +7,7 @@ use App\Models\CaptainReport;
 use App\Models\PortCall;
 use App\Models\User;
 use App\Models\Voyage;
+use App\Services\Chartering\ApprovalGuard;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 class CaptainReportService
 {
-    public function __construct(private readonly PortCallService $portCalls) {}
+    public function __construct(private readonly PortCallService $portCalls, private readonly ApprovalGuard $approvals) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -92,6 +93,9 @@ class CaptainReportService
 
     public function verify(CaptainReport $report, User $actor, ?string $comment, bool $applyToPortCall): CaptainReport
     {
+        // Maker-checker: the person who submitted the report cannot verify it (same rule as activities and laytime).
+        $this->approvals->assertNotSelfDecision($this->submitterOf($report), $actor);
+
         $r = $this->move($report, ['submitted'], 'verified', $actor, ['verified_by' => $actor->id, 'verified_at' => now(), 'decision_comment' => $comment]);
         if ($applyToPortCall && $r->port_call_id && in_array($r->report_type, ['arrival', 'departure'], true)) {
             $call = PortCall::query()->findOrFail($r->port_call_id);
@@ -104,6 +108,8 @@ class CaptainReportService
 
     public function reject(CaptainReport $report, User $actor, string $reason): CaptainReport
     {
+        $this->approvals->assertNotSelfDecision($this->submitterOf($report), $actor);
+
         return $this->move($report, ['submitted'], 'rejected', $actor, ['verified_by' => null, 'verified_at' => null, 'decision_comment' => $reason]);
     }
 
@@ -119,6 +125,12 @@ class CaptainReportService
      * @param  list<string>  $from
      * @param  array<string, mixed>  $extra
      */
+    /** The submitter as stored, not as held in memory. */
+    private function submitterOf(CaptainReport $report): ?int
+    {
+        return CaptainReport::query()->whereKey($report->id)->value('submitted_by');
+    }
+
     private function move(CaptainReport $report, array $from, string $to, User $actor, array $extra): CaptainReport
     {
         return DB::transaction(function () use ($report, $from, $to, $actor, $extra) {

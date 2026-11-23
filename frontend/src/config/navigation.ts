@@ -35,7 +35,7 @@ export const navigation: NavSection[] = [
   { label: 'Dashboard', icon: DashboardOutlined, to: '/', permission: P.DashboardView },
   {
     label: 'Chartering', icon: HandshakeOutlined, children: [
-      { label: 'Enquiries', to: '/chartering/enquiries', permission: P.EnquiriesView },
+      { label: 'Entries', to: '/chartering/enquiries', permission: P.EnquiriesView },
       { label: 'Estimations', to: '/chartering/estimations', permission: P.EstimationsView },
       { label: 'Offers', to: '/chartering/offers', permission: P.OffersView },
       { label: 'Fixtures', to: '/chartering/fixtures', permission: P.FixturesView },
@@ -47,7 +47,7 @@ export const navigation: NavSection[] = [
       { label: 'Voyages', to: '/operations/voyages', permission: P.VoyagesView },
       { label: 'Offshore Projects', to: '/operations/offshore-projects', permission: P.OffshoreProjectsView },
       { label: 'Offshore Activities', to: '/operations/offshore-activities', permission: P.OffshoreActivitiesView },
-      { label: 'Captain Reports', to: '/operations/captain-reports', permission: P.CaptainReportsView },
+      { label: 'Daily Reports', to: '/operations/captain-reports', permission: P.CaptainReportsView },
       { label: 'Bunkers', to: '/operations/bunkers', permission: P.BunkersView },
       { label: 'Port DA', to: '/operations/port-da', permission: P.PortDaView },
       { label: 'Laytime', to: '/operations/laytime', permission: P.LaytimeView },

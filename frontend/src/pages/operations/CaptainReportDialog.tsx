@@ -52,7 +52,7 @@ export function CaptainReportDialog({ open, onClose, report, vesselId, voyageId 
     setError(null);
     const base: Record<string, string> = {
       vessel_id: String(report?.vessel_id ?? vesselId ?? ''), voyage_id: String(report?.voyage_id ?? voyageId ?? ''), port_call_id: String(report?.port_call_id ?? ''),
-      report_type: report?.report_type ?? 'noon', reported_at: report ? fromIso(report.reported_at, offset) : '',
+      report_type: report?.report_type ?? 'daily', reported_at: report ? fromIso(report.reported_at, offset) : '',
     };
     for (const [k] of [...NUM_FIELDS, ...TEXT_FIELDS]) base[k] = report?.[k] != null ? String(report[k]) : '';
     base.activity_text = report?.activity_text ?? '';
@@ -92,7 +92,7 @@ export function CaptainReportDialog({ open, onClose, report, vesselId, voyageId 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{report ? 'Edit captain report' : 'New captain report'}</DialogTitle>
+      <DialogTitle>{report ? 'Edit captain report' : 'New daily report (New captain report'}</DialogTitle>
       <DialogContent dividers>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {report?.status === 'rejected' && report.decision_comment && <Alert severity="warning" sx={{ mb: 2 }}>Rejected: {report.decision_comment}</Alert>}
@@ -118,7 +118,7 @@ export function CaptainReportDialog({ open, onClose, report, vesselId, voyageId 
           </FormSection>
           <FormSection title="Report & timing" icon={<AccessTimeOutlined />} hint="Enter ship's time and its UTC offset. The report is stored in UTC.">
             <FormFieldGrid columns="minmax(0, 1fr) 130px minmax(0, 1.5fr)">
-              <TextField select label="Type" value={f.report_type ?? 'noon'} onChange={set('report_type')}>
+              <TextField select label="Type" value={f.report_type ?? 'daily'} onChange={set('report_type')}>
                 {REPORT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
               </TextField>
               <TextField select label="UTC offset" value={offset} onChange={(e) => { if (report) setF((x) => ({ ...x, reported_at: fromIso(report.reported_at, e.target.value) })); setOffset(e.target.value); }}>

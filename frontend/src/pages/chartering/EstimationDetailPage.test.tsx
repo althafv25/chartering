@@ -9,7 +9,7 @@ import { theme } from '../../theme/theme';
 import { AuthContext, type AuthContextValue } from '../../auth/context';
 import type { Estimation, Scenario, ScenarioInputs, ScenarioResult } from '../../types/chartering';
 
-vi.mock('../../api/chartering', () => ({ estimationsApi: { get: vi.fn(), scenario: vi.fn(), select: vi.fn(), saveScenario: vi.fn() } }));
+vi.mock('../../api/chartering', () => ({ estimationsApi: { get: vi.fn(), scenario: vi.fn(), select: vi.fn(), saveScenario: vi.fn(), remove: vi.fn() } }));
 vi.mock('../../api/masters', () => ({ referenceApi: { list: vi.fn(() => Promise.resolve([])) } }));
 import { estimationsApi } from '../../api/chartering';
 import EstimationDetailPage from './EstimationDetailPage';
@@ -41,15 +41,16 @@ const estimation = (s: Scenario): Estimation => ({
 });
 const clients: QueryClient[] = [];
 
-function renderPage(s = scenario()) {
+const defaultPermissions = ['chartering.estimations.update', 'chartering.estimations.submit'];
+
+function renderPage(s = scenario(), permissions: string[] = defaultPermissions, est: Partial<Estimation> = {}) {
   vi.mocked(estimationsApi.scenario).mockResolvedValue(s);
-  vi.mocked(estimationsApi.get).mockResolvedValue(estimation(s));
+  vi.mocked(estimationsApi.get).mockResolvedValue({ ...estimation(s), ...est });
   vi.mocked(estimationsApi.select).mockImplementation(async () => {
     const selected = { ...s, is_selected: true };
-    vi.mocked(estimationsApi.get).mockResolvedValue(estimation(selected));
+    vi.mocked(estimationsApi.get).mockResolvedValue({ ...estimation(selected), ...est });
     return { success: true, message: 'Scenario selected.', data: selected };
   });
-  const permissions = ['chartering.estimations.update', 'chartering.estimations.submit'];
   const auth = { can: (p: string | string[]) => (Array.isArray(p) ? p : [p]).some((x) => permissions.includes(x)) } as AuthContextValue;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
@@ -124,5 +125,34 @@ describe('Estimation scenario selection', () => {
     expect(await screen.findByRole('button', { name: 'Select scenario' }, { timeout: 5000 })).toBeDisabled();
     expect(screen.getByText('Missing fuel price.')).toBeInTheDocument();
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+  });
+});
+
+describe('Estimation delete', () => {
+  const deletePermissions = [...defaultPermissions, 'chartering.estimations.delete'];
+
+  it('deletes a draft only after confirmation', async () => {
+    const user = userEvent.setup();
+    vi.mocked(estimationsApi.remove).mockResolvedValue({ success: true, message: 'Estimation deleted.', data: null });
+    renderPage(scenario(), deletePermissions);
+
+    await user.click(await screen.findByRole('button', { name: 'Delete' }, { timeout: 5000 }));
+    expect(screen.getByText(/Delete EST-2026-00001\?/)).toBeInTheDocument();
+    expect(estimationsApi.remove).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(estimationsApi.remove).toHaveBeenCalledWith(2));
+  });
+
+  it('hides Delete without the delete permission', async () => {
+    renderPage(scenario(), defaultPermissions);
+    expect(await screen.findByRole('button', { name: 'Select scenario' }, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  it('hides Delete once the estimation is no longer a draft', async () => {
+    renderPage(scenario(), deletePermissions, { status: 'submitted', is_editable: false });
+    expect(await screen.findByText('Read-only', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 });

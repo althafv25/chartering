@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, DialogActions, DialogContent, Grid, MenuItem, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, DialogActions, DialogContent, FormLabel, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { DrawerDialog as Dialog, DrawerDialogTitle as DialogTitle } from '../../components/DrawerDialog';
 import AddIcon from '@mui/icons-material/Add';
 import { portDasApi, voyagesApi } from '../../api/operations';
@@ -13,6 +13,9 @@ import { StatusChip } from '../../components/StatusChip';
 import { ErrorState } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
 import { CurrencySelect } from '../../components/MasterPickers';
+import { AttachFiles } from '../../components/AttachFiles';
+import { uploadAttachments } from '../../lib/uploadAttachments';
+import { useAuth } from '../../auth/useAuth';
 import { Can } from '../../auth/guards';
 import { P } from '../../constants/permissions';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -73,6 +76,12 @@ function NewDaDialog({ open, onClose, onCreated }: { open: boolean; onClose: () 
   const [currency, setCurrency] = useState<string | null>('USD');
   const [proformaId, setProformaId] = useState<number | ''>('');
   const [error, setError] = useState<string | null>(null);
+  // Attachments are uploaded after the DA is saved. If an upload fails, the DA is kept and the failed files wait for a retry.
+  const [files, setFiles] = useState<File[]>([]);
+  const [docTypeId, setDocTypeId] = useState('');
+  const [created, setCreated] = useState<PortDa | null>(null);
+  const { can } = useAuth();
+  const canUpload = can(P.DocumentsUpload);
 
   const voyages = useQuery({ queryKey: ['voyages', 'open-for-da'], queryFn: () => voyagesApi.list({ per_page: 100, open: 1 }), enabled: open });
   const voyage = useQuery({ queryKey: ['voyages', voyageId], queryFn: () => voyagesApi.get(Number(voyageId)), enabled: open && voyageId !== '' });
@@ -85,10 +94,26 @@ function NewDaDialog({ open, onClose, onCreated }: { open: boolean; onClose: () 
     enabled: open && callId !== '' && daType === 'final',
   });
 
-  const reset = () => { setVoyageId(''); setCallId(''); setDaType('proforma'); setProformaId(''); setError(null); };
+  const reset = () => { setVoyageId(''); setCallId(''); setDaType('proforma'); setProformaId(''); setError(null); setFiles([]); setDocTypeId(''); setCreated(null); };
+  const closeDialog = () => { reset(); onClose(); };
   const create = useMutation({
-    mutationFn: () => portDasApi.create({ port_call_id: callId, voyage_id: voyageId, port_id: call!.port!.id, da_type: daType, currency, proforma_da_id: daType === 'final' && proformaId !== '' ? proformaId : null }),
-    onSuccess: (r) => { notify.success(r.message); qc.invalidateQueries({ queryKey: ['port-das'] }); reset(); onCreated(r.data); },
+    mutationFn: async () => {
+      const da = created ?? (await portDasApi.create({ port_call_id: callId, voyage_id: voyageId, port_id: call!.port!.id, da_type: daType, currency, proforma_da_id: daType === 'final' && proformaId !== '' ? proformaId : null })).data;
+      const { failed, reason } = await uploadAttachments('port-das', da.id, files, docTypeId);
+      return { da, failed, reason };
+    },
+    onSuccess: ({ da, failed, reason }) => {
+      qc.invalidateQueries({ queryKey: ['port-das'] });
+      if (failed.length === 0) {
+        notify.success(`Port DA ${da.da_number} created.`);
+        reset();
+        onCreated(da);
+        return;
+      }
+      setCreated(da);
+      setFiles(failed);
+      setError(`Port DA ${da.da_number} is saved, but ${failed.length} document(s) did not upload (${reason}). Press "Retry uploads", or attach them later on the DA's Documents tab.`);
+    },
     onError: (e) => setError(errorMessage(e)),
   });
 
@@ -99,12 +124,12 @@ function NewDaDialog({ open, onClose, onCreated }: { open: boolean; onClose: () 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Grid container spacing={2}>
           <Grid size={12}>
-            <TextField select label="Voyage" required value={voyageId} onChange={(e) => { setVoyageId(Number(e.target.value)); setCallId(''); setProformaId(''); }}>
+            <TextField select label="Voyage" required disabled={created !== null} value={voyageId} onChange={(e) => { setVoyageId(Number(e.target.value)); setCallId(''); setProformaId(''); }}>
               {(voyages.data?.data ?? []).map((v) => <MenuItem key={v.id} value={v.id}>{v.voyage_number}{v.vessel ? ` · ${v.vessel.name}` : ''}</MenuItem>)}
             </TextField>
           </Grid>
           <Grid size={12}>
-            <TextField select label="Port call" required disabled={voyageId === ''} value={callId} onChange={(e) => { setCallId(Number(e.target.value)); setProformaId(''); }}
+            <TextField select label="Port call" required disabled={voyageId === '' || created !== null} value={callId} onChange={(e) => { setCallId(Number(e.target.value)); setProformaId(''); }}
               helperText={voyageId !== '' && !voyage.isLoading && calls.length === 0 ? 'This voyage has no port calls at a port. Add one on the voyage itinerary first.' : undefined}>
               {calls.map((c) => <MenuItem key={c.id} value={c.id}>{c.sequence}. {c.label} · {humanize(c.purpose)}</MenuItem>)}
             </TextField>
@@ -123,11 +148,23 @@ function NewDaDialog({ open, onClose, onCreated }: { open: boolean; onClose: () 
               </TextField>
             </Grid>
           )}
+          {canUpload && (
+            <Grid size={12}>
+              <Stack spacing={1}>
+                <FormLabel>Documents (optional)</FormLabel>
+                <AttachFiles files={files} onFiles={setFiles} docTypeId={docTypeId} onDocTypeId={setDocTypeId} disabled={create.isPending}
+                  enabled={open && canUpload} onError={setError} />
+              </Stack>
+            </Grid>
+          )}
         </Grid>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <LoadingButton variant="contained" loading={create.isPending} disabled={!call || !currency} onClick={() => create.mutate()}>Create</LoadingButton>
+        <Button onClick={closeDialog} disabled={create.isPending}>Cancel</Button>
+        <LoadingButton variant="contained" loading={create.isPending}
+          disabled={!call || !currency || (files.length > 0 && !docTypeId) || (created !== null && files.length === 0)} onClick={() => create.mutate()}>
+          {created ? 'Retry uploads' : 'Create'}
+        </LoadingButton>
       </DialogActions>
     </Dialog>
   );
