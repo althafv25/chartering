@@ -27,6 +27,7 @@ Desktop.ini
 .env.production.local
 .env.test.local
 .env.development.local
+docs/
 
 # Backend (Laravel)
 backend/vendor/
@@ -189,5 +190,6 @@ docker-compose.override.yml
 __pycache__/
 *.py[cod]
 *$py.class
+docs/
 
 # Composer and npm lockfiles are tracked for reproducible installs.

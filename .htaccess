@@ -1,0 +1,10 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Preserve bearer tokens when Apache passes the request to PHP.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Route API requests through the repository's Laravel front controller.
+    RewriteRule ^api(?:/|$) index.php [L]
+</IfModule>
