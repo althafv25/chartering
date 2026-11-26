@@ -11,6 +11,7 @@ Documentation for the Offshore Chartering & Vessel Operations system. Last clean
 | See the same for an offshore day-rate charter (activities, mob/demob, standby) | [offshore-dataflow.md](offshore-dataflow.md) |
 | See how offshore data flows with a contract chain, from an estimate only, from a contract and project only, or with no contract | [offshore-data-flow-paths.md](offshore-data-flow-paths.md) |
 | Enter a voyage charter step by step with dummy data, from enquiry to P&L | [voyage-charter-step-by-step.md](voyage-charter-step-by-step.md) |
+| Run a voyage charter from enquiry and estimate straight to a voyage, without a fixture (SOP) | [voyage-charter-sop-enquiry-to-direct-voyage.md](voyage-charter-sop-enquiry-to-direct-voyage.md) |
 | Understand how actual cost is calculated, with dates and amounts compared against the estimate | [offshore-actual-cost-example.md](offshore-actual-cost-example.md) |
 | See how the offshore demo seeder builds a whole job and how its data flows | [offshore-seeder-data-flow.md](offshore-seeder-data-flow.md) |
 | Create a dummy offshore job from enquiry to final profit, with every figure | [offshore-dummy-walkthrough.md](offshore-dummy-walkthrough.md) |

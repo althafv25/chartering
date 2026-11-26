@@ -23,7 +23,7 @@ return [
         'model' => Models\FuelType::class,
         'label' => 'Fuel types',
         'fields' => [
-            'category' => ['type' => 'select', 'label' => 'Category', 'required' => true, 'options' => ['HFO', 'VLSFO', 'ULSFO', 'LSMGO', 'MGO', 'MDO', 'LNG', 'METHANOL', 'OTHER']],
+            'category' => ['type' => 'select', 'label' => 'Category', 'required' => true, 'options' => ['HFO', 'VLSFO', 'ULSFO', 'LSMGO', 'MGO', 'MDO', 'LNG', 'METHANOL', 'LUB' , 'OTHER']],
             'is_eca_compliant' => ['type' => 'bool', 'label' => 'ECA compliant'],
         ],
     ],

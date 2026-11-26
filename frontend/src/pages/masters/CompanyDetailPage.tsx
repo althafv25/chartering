@@ -25,6 +25,7 @@ import { useNotify } from '../../hooks/useNotify';
 import { formatDate, humanize } from '../../utils/format';
 import type { BankAccount, Contact } from '../../types/masters';
 import { CompanyDrawer } from './CompanyDrawer';
+import { CustomerStatementPanel } from './CustomerStatementPanel';
 
 type ContactForm = Omit<Contact, 'id' | 'company_id' | 'full_name'>;
 const emptyContact: ContactForm = { first_name: '', last_name: '', job_title: '', department: '', email: '', phone: '', mobile: '', is_primary: false, remarks: '' };
@@ -121,6 +122,7 @@ export default function CompanyDetailPage() {
           <Tab value="overview" label="Overview" />
           <Tab value="contacts" label={`Contacts (${c.contacts?.length ?? 0})`} />
           <Tab value="bank" label="Bank details" />
+          {can(P.PaymentsView) && can(P.ReportsView) && <Tab value="statement" label="Statement of account" />}
           <Tab value="documents" label="Documents" />
         </Tabs>
 
@@ -167,6 +169,7 @@ export default function CompanyDetailPage() {
           </Box>
         )}
 
+        {tab === 'statement' && <CustomerStatementPanel companyId={id} />}
         {tab === 'documents' && <DocumentsPanel parentType="companies" parentId={id} canEdit={canEdit} />}
       </Card>
 

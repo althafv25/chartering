@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\Permission;
 use App\Enums\VoyageExpenseStatus;
 use App\Enums\VoyageRevenueStatus;
@@ -44,6 +45,7 @@ class ReportService
         'chartering-activity' => ['Chartering activity (enquiries)', Permission::EnquiriesView, ['status', 'from', 'to']],
         'vessel-utilization' => ['Vessel utilization', Permission::VoyagesView, ['vessel_id', 'from', 'to']],
         'vessel-performance' => ['Vessel performance (verified reports)', Permission::CaptainReportsView, ['vessel_id', 'from', 'to']],
+        'customer-statement' => ['Customer statement of account', Permission::PaymentsView, ['customer_company_id', 'from', 'to']],
     ];
 
     public function __construct(private readonly VoyageFinancialService $financials, private readonly FleetReports $fleet) {}
@@ -93,6 +95,7 @@ class ReportService
             'chartering-activity' => $this->charteringActivity($filters),
             'vessel-utilization' => $this->fleet->utilization($filters),
             'vessel-performance' => $this->fleet->performance($filters),
+            'customer-statement' => $this->customerStatement($filters),
             'revenue' => $this->lines('voyage_revenues', 'revenue_categories', 'revenue_category_id', $filters, [VoyageRevenueStatus::Confirmed->value, VoyageRevenueStatus::Invoiced->value], $limit + 1),
             default => $this->lines('voyage_expenses', 'expense_categories', 'expense_category_id', $filters, [VoyageExpenseStatus::Confirmed->value, VoyageExpenseStatus::Approved->value, VoyageExpenseStatus::Paid->value], $limit + 1),
         };
@@ -442,6 +445,98 @@ class ReportService
         return [[
             $this->col('date', 'Date'), $this->col('voyage', 'Voyage'), $this->col('category', 'Category'), $this->col('description', 'Description'),
             $this->col('currency', 'Currency'), $this->col('amount', 'Amount', 'right'), $this->col('base_amount', 'Base amount', 'right'), $this->col('status', 'Status'),
+        ], $rows];
+    }
+
+    /**
+     * Customer statement of account, in base currency.
+     *
+     * Debits are issued invoices (including invoices later credited: their credit note is a negative debit, so the
+     * pair nets to zero). Credits are recorded receipts from the customer, allocated or not. Reversed payments are
+     * left out. Drafts and unissued invoices are left out.
+     *
+     * @return array{0: list<array<string, string>>, 1: list<array<string, string|null>>}
+     */
+    private function customerStatement(array $f): array
+    {
+        if (empty($f['customer_company_id'])) {
+            throw new BusinessRuleException('Choose a customer to build the statement.', 'customer_required', ['customer_company_id' => ['Required.']], 422);
+        }
+        $customerId = (int) $f['customer_company_id'];
+        $from = ! empty($f['from']) ? Carbon::parse($f['from'])->toDateString() : null;
+        $to = ! empty($f['to']) ? Carbon::parse($f['to'])->toDateString() : Carbon::today()->toDateString();
+        $name = (string) DB::table('companies')->where('id', $customerId)->value('legal_name');
+
+        $entries = [];
+        $invoices = DB::table('invoices')->whereNull('deleted_at')->where('customer_company_id', $customerId)->whereNotNull('issued_at')
+            ->get(['id', 'invoice_number', 'invoice_type', 'issue_date', 'currency', 'total', 'base_total']);
+        foreach ($invoices as $inv) {
+            $isCredit = $inv->invoice_type === 'credit_note';
+            $base = Decimal::round((string) $inv->base_total, 2);
+            $entries[] = [
+                'date' => (string) $inv->issue_date, 'order' => 0, 'id' => (int) $inv->id,
+                'type' => $isCredit ? 'Credit note' : 'Invoice', 'reference' => (string) $inv->invoice_number,
+                'description' => $isCredit ? 'Credit against an earlier invoice' : ucfirst(str_replace('_', ' ', (string) $inv->invoice_type)),
+                'currency' => (string) $inv->currency, 'original' => Decimal::round((string) $inv->total, 2),
+                'debit' => $isCredit ? '0.00' : $base,
+                'credit' => $isCredit ? Decimal::round(Decimal::mul($base, '-1'), 2) : '0.00',
+            ];
+        }
+
+        $payments = DB::table('payments')->whereNull('deleted_at')->where('company_id', $customerId)
+            ->where('direction', 'received')->where('status', PaymentStatus::Recorded->value)
+            ->get(['id', 'payment_number', 'payment_date', 'currency', 'amount', 'base_amount', 'method', 'bank_reference']);
+        foreach ($payments as $p) {
+            $entries[] = [
+                'date' => (string) $p->payment_date, 'order' => 1, 'id' => (int) $p->id,
+                'type' => 'Payment', 'reference' => (string) $p->payment_number,
+                'description' => trim(implode(' · ', array_filter([(string) $p->method, (string) $p->bank_reference]))),
+                'currency' => (string) $p->currency, 'original' => Decimal::round((string) $p->amount, 2),
+                'debit' => '0.00', 'credit' => Decimal::round((string) $p->base_amount, 2),
+            ];
+        }
+
+        usort($entries, fn (array $a, array $b) => [$a['date'], $a['order'], $a['id']] <=> [$b['date'], $b['order'], $b['id']]);
+
+        $opening = '0.00';
+        $period = [];
+        foreach ($entries as $e) {
+            if ($from !== null && $e['date'] < $from) {
+                $opening = Decimal::sub(Decimal::add($opening, $e['debit']), $e['credit']);
+            } elseif ($e['date'] <= $to) {
+                $period[] = $e;
+            }
+        }
+
+        $money = fn (string $v): ?string => Decimal::isZero($v) ? null : Decimal::round($v, 2);
+        $rows = [[
+            'date' => $from ?? '', 'type' => 'Opening balance', 'reference' => '',
+            'description' => "Balance brought forward for {$name}", 'currency' => '',
+            'original_amount' => null, 'debit' => null, 'credit' => null, 'balance' => Decimal::round($opening, 2),
+        ]];
+        $balance = $opening;
+        $debitTotal = '0.00';
+        $creditTotal = '0.00';
+        foreach ($period as $e) {
+            $balance = Decimal::sub(Decimal::add($balance, $e['debit']), $e['credit']);
+            $debitTotal = Decimal::add($debitTotal, $e['debit']);
+            $creditTotal = Decimal::add($creditTotal, $e['credit']);
+            $rows[] = [
+                'date' => $e['date'], 'type' => $e['type'], 'reference' => $e['reference'], 'description' => $e['description'],
+                'currency' => $e['currency'], 'original_amount' => Decimal::round($e['original'], 2),
+                'debit' => $money($e['debit']), 'credit' => $money($e['credit']), 'balance' => Decimal::round($balance, 2),
+            ];
+        }
+        $rows[] = [
+            'date' => $to, 'type' => 'Closing balance', 'reference' => '',
+            'description' => 'Period totals to '.$to, 'currency' => '',
+            'original_amount' => null, 'debit' => $money($debitTotal), 'credit' => $money($creditTotal), 'balance' => Decimal::round($balance, 2),
+        ];
+
+        return [[
+            $this->col('date', 'Date'), $this->col('type', 'Type'), $this->col('reference', 'Reference'), $this->col('description', 'Description'),
+            $this->col('currency', 'Currency'), $this->col('original_amount', 'Original amount', 'right'), $this->col('debit', 'Debit', 'right'),
+            $this->col('credit', 'Credit', 'right'), $this->col('balance', 'Balance', 'right'),
         ], $rows];
     }
 

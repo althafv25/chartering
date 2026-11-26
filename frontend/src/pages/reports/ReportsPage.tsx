@@ -5,6 +5,7 @@ import { Alert, Box, Card, List, ListItemButton, ListItemText, MenuItem, Stack, 
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import { reportsApi } from '../../api/finance';
 import { PageHeader } from '../../components/PageHeader';
+import { CompanyAutocomplete } from '../../components/MasterPickers';
 import { EmptyState, ErrorState, SectionLoader } from '../../components/Feedback';
 import { LoadingButton } from '../../components/LoadingButton';
 import { useAuth } from '../../auth/useAuth';
@@ -54,8 +55,15 @@ function ReportView({ slug, filters, formats }: { slug: string; filters: string[
   const [to, setTo] = useState('');
   const [asOf, setAsOf] = useState('');
   const [status, setStatus] = useState('');
-  const params = { from: from || undefined, to: to || undefined, as_of: asOf || undefined, status: status.trim() || undefined };
-  const q = useQuery({ queryKey: ['reports', slug, params], queryFn: () => reportsApi.run(slug, params) });
+  const [customerId, setCustomerId] = useState<number | null>(null);
+  // The statement is for one customer; without one, there is nothing to run or export.
+  const needsCustomer = slug === 'customer-statement';
+  const blocked = needsCustomer && !customerId;
+  const params = {
+    from: from || undefined, to: to || undefined, as_of: asOf || undefined, status: status.trim() || undefined,
+    customer_company_id: customerId ? String(customerId) : undefined,
+  };
+  const q = useQuery({ queryKey: ['reports', slug, params], queryFn: () => reportsApi.run(slug, params), enabled: !blocked });
   const exportAs = useMutation({ mutationFn: (format: 'csv' | 'xlsx' | 'pdf') => reportsApi.download(slug, format, params), onError: (e) => notify.error(e) });
 
   return (
@@ -65,14 +73,16 @@ function ReportView({ slug, filters, formats }: { slug: string; filters: string[
         {filters.includes('to') && <TextField type="date" size="small" label="To" value={to} onChange={(e) => setTo(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />}
         {filters.includes('status') && <TextField size="small" label="Status" placeholder="e.g. completed" value={status} onChange={(e) => setStatus(e.target.value)} sx={{ width: 160 }} />}
         {filters.includes('as_of') && <TextField type="date" size="small" label="As of" value={asOf} onChange={(e) => setAsOf(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />}
+        {filters.includes('customer_company_id') && <Box sx={{ minWidth: 260 }}><CompanyAutocomplete value={customerId} onChange={(id) => setCustomerId(id)} role="charterer" label={needsCustomer ? 'Customer (required)' : 'Customer'} /></Box>}
         <Box sx={{ flex: 1 }} />
         {q.data && <Typography variant="body2" color="text.secondary">{q.data.rows.length} row(s) · amounts in {q.data.base_currency}</Typography>}
-        {formats.includes('csv') && <LoadingButton variant="outlined" startIcon={<DownloadOutlined />} loading={exportAs.isPending} onClick={() => exportAs.mutate('csv')}>CSV</LoadingButton>}
-        {formats.includes('xlsx') && <LoadingButton variant="outlined" startIcon={<DownloadOutlined />} loading={exportAs.isPending} onClick={() => exportAs.mutate('xlsx')}>Excel</LoadingButton>}
-        {formats.includes('pdf') && <LoadingButton variant="outlined" startIcon={<DownloadOutlined />} loading={exportAs.isPending} onClick={() => exportAs.mutate('pdf')}>PDF</LoadingButton>}
+        {formats.includes('csv') && <LoadingButton variant="outlined" startIcon={<DownloadOutlined />} loading={exportAs.isPending} disabled={blocked} onClick={() => exportAs.mutate('csv')}>CSV</LoadingButton>}
+        {formats.includes('xlsx') && <LoadingButton variant="outlined" startIcon={<DownloadOutlined />} loading={exportAs.isPending} disabled={blocked} onClick={() => exportAs.mutate('xlsx')}>Excel</LoadingButton>}
+        {formats.includes('pdf') && <LoadingButton variant="outlined" startIcon={<DownloadOutlined />} loading={exportAs.isPending} disabled={blocked} onClick={() => exportAs.mutate('pdf')}>PDF</LoadingButton>}
       </Stack>
       {q.data?.truncated && <Alert severity="warning" sx={{ mx: 2, mb: 1 }}>Showing the first {q.data.row_limit.toLocaleString()} rows only. Narrow the filters (dates, status) to see the rest; file exports are refused above their row limit rather than cut.</Alert>}
-      {q.isLoading ? <SectionLoader /> : q.isError ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data || q.data.rows.length === 0 ? <EmptyState title="No data" description="No rows match the current filters." /> : (
+      {blocked ? <EmptyState title="Choose a customer" description="The statement of account is built for one customer. Pick a customer above." />
+        : q.isLoading ? <SectionLoader /> : q.isError ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data || q.data.rows.length === 0 ? <EmptyState title="No data" description="No rows match the current filters." /> : (
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small">
             <TableHead><TableRow>{q.data.columns.map((c) => <TableCell key={c.key} align={c.align}>{c.label}</TableCell>)}</TableRow></TableHead>

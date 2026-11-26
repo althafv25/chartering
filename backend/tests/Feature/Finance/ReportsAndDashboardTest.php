@@ -72,7 +72,7 @@ class ReportsAndDashboardTest extends OperationsTestCase
 
         $finance = $this->userWithRole(UserRole::Finance);
         $slugs = array_column($this->as($finance)->getJson('/api/v1/reports')->assertOk()->json('data'), 'slug');
-        $this->assertEqualsCanonicalizing(['voyage-pnl', 'outstanding-invoices', 'revenue', 'expenses', 'estimated-vs-actual', 'vessel-profitability', 'voyage-status', 'fleet-status', 'contract-status', 'bunker-consumption', 'port-cost', 'offshore-activities', 'laytime-demurrage', 'chartering-activity', 'vessel-utilization', 'vessel-performance'], $slugs);
+        $this->assertEqualsCanonicalizing(['voyage-pnl', 'outstanding-invoices', 'revenue', 'expenses', 'estimated-vs-actual', 'vessel-profitability', 'voyage-status', 'fleet-status', 'contract-status', 'bunker-consumption', 'port-cost', 'offshore-activities', 'laytime-demurrage', 'chartering-activity', 'vessel-utilization', 'vessel-performance', 'customer-statement'], $slugs);
 
         $opsSlugs = array_column($this->as($this->ops)->getJson('/api/v1/reports')->assertOk()->json('data'), 'slug');
         $this->assertEqualsCanonicalizing(['outstanding-invoices', 'voyage-status', 'fleet-status', 'contract-status', 'bunker-consumption', 'port-cost', 'offshore-activities', 'laytime-demurrage', 'chartering-activity', 'vessel-utilization', 'vessel-performance'], $opsSlugs);
